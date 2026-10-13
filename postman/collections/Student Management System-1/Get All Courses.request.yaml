@@ -1,0 +1,7 @@
+$kind: http-request
+url: http://localhost:8080/api/courses
+method: GET
+body:
+  type: json
+  content: ""
+order: 2000

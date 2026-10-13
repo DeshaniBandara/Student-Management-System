@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/students/1/course
+method: DELETE
+order: 10000

@@ -1,0 +1,15 @@
+$kind: http-request
+url: http://localhost:8080/api/courses
+method: POST
+body:
+  type: json
+  content: "   {\r
+
+    \     \"title\": \"BSc in ICT\",\r
+
+    \     \"description\": \"Information and Communication Technology\",\r
+
+    \     \"credits\": 120\r
+
+    \   }"
+order: 1000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: http://localhost:8080/api/students/1/course/1
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \"firstName\": \"Nimal\",\r
+
+    \  \"lastName\": \"Perera\",\r
+
+    \  \"email\": \"nimal@example.com\",\r
+
+    \  \"age\": 21,\r
+
+    \  \"phone\": \"0771234567\"\r
+
+    }"
+order: 6000
