@@ -1,4 +1,7 @@
 package com.gamage.student_management_system.repository;
 
-public interface CourseRepository {
+import com.gamage.student_management_system.entity.Course;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CourseRepository extends JpaRepository<Course, Long> {
 }
