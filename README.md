@@ -152,6 +152,13 @@ Example files are provided as `.env.example`. Never commit real values.
 
 **Frontend** (`frontend/.env.local`)
 
+  frontend/src/
+  ├── app/          # pages: dashboard, students, courses, login
+  ├── components/   # Navbar, Loading, ErrorMessage
+  ├── lib/          # axios instance and error helper
+  ├── services/     # API calls (courseService, studentService)
+  └── types/        # TypeScript types matching the backend DTOs
+
 | Variable | Description |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | Backend base URL, for example `http://localhost:8080` |
