@@ -1,9 +1,11 @@
 package com.gamage.student_management_system.controller;
 
-import com.gamage.student_management_system.entity.Course;
-import com.gamage.student_management_system.entity.Student;
+import com.gamage.student_management_system.dto.request.CourseRequest;
+import com.gamage.student_management_system.dto.response.CourseResponse;
+import com.gamage.student_management_system.dto.response.StudentResponse;
 import com.gamage.student_management_system.service.CourseService;
 import com.gamage.student_management_system.service.StudentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -19,30 +21,30 @@ public class CourseController {
     private final StudentService studentService;
 
     @GetMapping
-    public List<Course> getAll() {
+    public List<CourseResponse> getAll() {
         return courseService.getAll();
     }
 
     @GetMapping("/{id}")
-    public Course getById(@PathVariable Long id) {
+    public CourseResponse getById(@PathVariable Long id) {
         return courseService.getById(id);
     }
 
     @GetMapping("/{id}/students")
-    public List<Student> getStudents(@PathVariable Long id) {
-        courseService.getById(id);
+    public List<StudentResponse> getStudents(@PathVariable Long id) {
+        courseService.getById(id); // throws 404 if the course does not exist
         return studentService.getByCourse(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Course create(@RequestBody Course course) {
-        return courseService.create(course);
+    public CourseResponse create(@Valid @RequestBody CourseRequest request) {
+        return courseService.create(request);
     }
 
     @PutMapping("/{id}")
-    public Course update(@PathVariable Long id, @RequestBody Course course) {
-        return courseService.update(id, course);
+    public CourseResponse update(@PathVariable Long id, @Valid @RequestBody CourseRequest request) {
+        return courseService.update(id, request);
     }
 
     @DeleteMapping("/{id}")

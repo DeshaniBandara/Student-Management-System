@@ -1,13 +1,17 @@
 package com.gamage.student_management_system.service;
 
+import com.gamage.student_management_system.dto.request.StudentRequest;
+import com.gamage.student_management_system.dto.response.StudentResponse;
 import com.gamage.student_management_system.entity.Course;
 import com.gamage.student_management_system.entity.Student;
+import com.gamage.student_management_system.exception.ConflictException;
+import com.gamage.student_management_system.exception.ResourceNotFoundException;
+import com.gamage.student_management_system.mapper.StudentMapper;
 import com.gamage.student_management_system.repository.CourseRepository;
 import com.gamage.student_management_system.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,54 +22,67 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final CourseRepository courseRepository;
 
-    public List<Student> getAll() {
-        return studentRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<StudentResponse> getAll() {
+        return studentRepository.findAll().stream()
+                .map(StudentMapper::toResponse)
+                .toList();
     }
 
-    public Student getById(Long id) {
-        return studentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
+    @Transactional(readOnly = true)
+    public StudentResponse getById(Long id) {
+        return StudentMapper.toResponse(findStudent(id));
     }
 
-    public List<Student> getByCourse(Long courseId) {
-        return studentRepository.findByCourseId(courseId);
+    @Transactional(readOnly = true)
+    public List<StudentResponse> getByCourse(Long courseId) {
+        return studentRepository.findByCourseId(courseId).stream()
+                .map(StudentMapper::toResponse)
+                .toList();
     }
 
-    public Student create(Student student) {
-        if (studentRepository.existsByEmail(student.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+    @Transactional
+    public StudentResponse create(StudentRequest request) {
+        if (studentRepository.existsByEmail(request.email())) {
+            throw new ConflictException("Email already exists");
         }
-        student.setId(null);
-        student.setCourse(null);
-        return studentRepository.save(student);
+        Student saved = studentRepository.save(StudentMapper.toEntity(request));
+        return StudentMapper.toResponse(saved);
     }
 
-    public Student update(Long id, Student updated) {
-        Student existing = getById(id);
-        existing.setFirstName(updated.getFirstName());
-        existing.setLastName(updated.getLastName());
-        existing.setEmail(updated.getEmail());
-        existing.setAge(updated.getAge());
-        existing.setPhone(updated.getPhone());
-        return studentRepository.save(existing);
+    @Transactional
+    public StudentResponse update(Long id, StudentRequest request) {
+        Student student = findStudent(id);
+        if (studentRepository.existsByEmailAndIdNot(request.email(), id)) {
+            throw new ConflictException("Email already exists");
+        }
+        StudentMapper.updateEntity(student, request);
+        return StudentMapper.toResponse(studentRepository.save(student));
     }
 
-    public Student assignCourse(Long studentId, Long courseId) {
-        Student student = getById(studentId);
+    @Transactional
+    public StudentResponse assignCourse(Long studentId, Long courseId) {
+        Student student = findStudent(studentId);
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id " + courseId));
         student.setCourse(course);
-        return studentRepository.save(student);
+        return StudentMapper.toResponse(studentRepository.save(student));
     }
 
-    public Student removeCourse(Long studentId) {
-        Student student = getById(studentId);
+    @Transactional
+    public StudentResponse removeCourse(Long studentId) {
+        Student student = findStudent(studentId);
         student.setCourse(null);
-        return studentRepository.save(student);
+        return StudentMapper.toResponse(studentRepository.save(student));
     }
 
+    @Transactional
     public void delete(Long id) {
-        getById(id);
-        studentRepository.deleteById(id);
+        studentRepository.delete(findStudent(id));
+    }
+
+    private Student findStudent(Long id) {
+        return studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with id " + id));
     }
 }
