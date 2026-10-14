@@ -1,5 +1,5 @@
 $kind: http-request
-url: http://localhost:8080/api/students/1/course/1
+url: http://localhost:8080/api/students/1/course/2
 method: PUT
 body:
   type: json
