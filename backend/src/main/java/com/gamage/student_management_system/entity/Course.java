@@ -1,6 +1,5 @@
 package com.gamage.student_management_system.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,6 +28,5 @@ public class Course {
     private Integer credits;
 
     @OneToMany(mappedBy = "course")
-    @JsonIgnore
     private List<Student> students = new ArrayList<>();
 }
