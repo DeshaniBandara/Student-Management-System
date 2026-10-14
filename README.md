@@ -8,7 +8,7 @@ A full stack web application for managing students and courses, built as an inte
 |---|---|---|
 | Day 1 | Planning and environment setup | Completed |
 | Day 2 | Database design and backend CRUD APIs | Completed |
-| Day 2 (review) | Refactor to DTOs, validation and global exception handling | Completed |
+| Day 2 | Refactor to DTOs, validation and global exception handling | Completed |
 | Day 3 | Frontend UI and API integration | Upcoming |
 | Day 4 | Authentication (JWT), validation and security | Upcoming |
 | Day 5 | Deployment and final documentation | Upcoming |
