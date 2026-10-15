@@ -41,13 +41,23 @@ public class StudentService {
                 .toList();
     }
 
+    // The logged-in student's own record, linked to the account by email
+    @Transactional(readOnly = true)
+    public StudentResponse getByEmail(String email) {
+        return studentRepository.findByEmailIgnoreCase(email)
+                .map(StudentMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No student record is linked to your account yet. Please contact the administrator."));
+    }
+
     @Transactional
     public StudentResponse create(StudentRequest request) {
         if (studentRepository.existsByEmail(request.email())) {
             throw new ConflictException("Email already exists");
         }
-        Student saved = studentRepository.save(StudentMapper.toEntity(request));
-        return StudentMapper.toResponse(saved);
+        Student student = StudentMapper.toEntity(request);
+        student.setCourse(resolveCourse(request.courseId()));
+        return StudentMapper.toResponse(studentRepository.save(student));
     }
 
     @Transactional
@@ -57,15 +67,14 @@ public class StudentService {
             throw new ConflictException("Email already exists");
         }
         StudentMapper.updateEntity(student, request);
+        student.setCourse(resolveCourse(request.courseId()));
         return StudentMapper.toResponse(studentRepository.save(student));
     }
 
     @Transactional
     public StudentResponse assignCourse(Long studentId, Long courseId) {
         Student student = findStudent(studentId);
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id " + courseId));
-        student.setCourse(course);
+        student.setCourse(resolveCourse(courseId));
         return StudentMapper.toResponse(studentRepository.save(student));
     }
 
@@ -84,5 +93,13 @@ public class StudentService {
     private Student findStudent(Long id) {
         return studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id " + id));
+    }
+
+    private Course resolveCourse(Long courseId) {
+        if (courseId == null) {
+            return null;
+        }
+        return courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with id " + courseId));
     }
 }
