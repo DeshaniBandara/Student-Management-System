@@ -2,24 +2,30 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Course, Student } from "@/types";
+import type { Course, Student, User } from "@/types";
 import { studentService } from "@/services/studentService";
 import { courseService } from "@/services/courseService";
+import { adminService } from "@/services/adminService";
 import { getErrorMessage } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 
 async function fetchData() {
-  const [students, courses] = await Promise.all([
+  const [students, courses, lecturers] = await Promise.all([
     studentService.getAll(),
     courseService.getAll(),
+    adminService.getLecturers(),
   ]);
-  return { students, courses };
+  return { students, courses, lecturers };
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [lecturers, setLecturers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +36,7 @@ export default function DashboardPage() {
         if (ignore) return;
         setStudents(data.students);
         setCourses(data.courses);
+        setLecturers(data.lecturers);
       })
       .catch((err) => {
         if (!ignore) setError(getErrorMessage(err));
@@ -49,6 +56,7 @@ export default function DashboardPage() {
       .then((data) => {
         setStudents(data.students);
         setCourses(data.courses);
+        setLecturers(data.lecturers);
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
@@ -57,7 +65,38 @@ export default function DashboardPage() {
   if (loading) return <Loading message="Loading dashboard..." />;
   if (error) return <ErrorMessage message={error} onRetry={handleRetry} />;
 
-  const withoutCourse = students.filter((s) => !s.course).length;
+  const studentsWithoutCourse = students.filter((s) => !s.course).length;
+  const coursesWithoutLecturer = courses.filter((c) => !c.lecturer).length;
+  const lecturersWithoutCourse = lecturers.filter(
+    (l) => !courses.some((c) => c.lecturer?.id === l.id)
+  ).length;
+
+  const attention = [
+    {
+      count: studentsWithoutCourse,
+      text: "students are not enrolled in a course",
+      href: "/students",
+      action: "Review students",
+    },
+    {
+      count: coursesWithoutLecturer,
+      text: "courses have no lecturer assigned",
+      href: "/courses",
+      action: "Assign lecturers",
+    },
+    {
+      count: lecturersWithoutCourse,
+      text: "lecturers have no course yet",
+      href: "/courses",
+      action: "Assign courses",
+    },
+  ].filter((item) => item.count > 0);
+
+  const stats = [
+    { label: "Students", value: students.length, href: "/students" },
+    { label: "Lecturers", value: lecturers.length, href: "/lecturers" },
+    { label: "Courses", value: courses.length, href: "/courses" },
+  ];
 
   const perCourse = courses.map((c) => ({
     id: c.id,
@@ -68,18 +107,14 @@ export default function DashboardPage() {
 
   const recent = [...students].sort((a, b) => b.id - a.id).slice(0, 5);
 
-  const stats = [
-    { label: "Total students", value: students.length, href: "/students" },
-    { label: "Total courses", value: courses.length, href: "/courses" },
-    { label: "Students without a course", value: withoutCourse, href: "/students" },
-  ];
-
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <div>
+        <h1 className="text-2xl font-bold">Welcome back, {user?.fullName}</h1>
+        <p className="text-slate-600">Here is an overview of your system.</p>
+      </div>
 
-      {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {stats.map((s) => (
           <Link
             key={s.label}
@@ -92,8 +127,35 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      <section className="rounded-lg bg-white p-5 shadow">
+        <h2 className="mb-3 text-lg font-semibold">Needs your attention</h2>
+        {attention.length === 0 ? (
+          <p className="rounded bg-emerald-50 p-3 text-emerald-800">
+            Everything is set up. Every student has a course and every course has a lecturer.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {attention.map((item) => (
+              <li
+                key={item.text}
+                className="flex flex-wrap items-center justify-between gap-2 rounded bg-amber-50 p-3"
+              >
+                <span className="text-amber-900">
+                  <strong>{item.count}</strong> {item.text}
+                </span>
+                <Link
+                  href={item.href}
+                  className="rounded border border-amber-300 px-3 py-1 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  {item.action}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Students per course */}
         <section className="rounded-lg bg-white p-5 shadow">
           <h2 className="mb-4 text-lg font-semibold">Students per course</h2>
           {perCourse.length === 0 ? (
@@ -118,7 +180,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Recent students */}
         <section className="rounded-lg bg-white p-5 shadow">
           <h2 className="mb-4 text-lg font-semibold">Recently added students</h2>
           {recent.length === 0 ? (

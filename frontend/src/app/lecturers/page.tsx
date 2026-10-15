@@ -1,29 +1,63 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "@/types";
+import type { Course, User } from "@/types";
 import { adminService } from "@/services/adminService";
+import { courseService } from "@/services/courseService";
 import { getErrorMessage } from "@/lib/api";
+import { btnPrimary, btnSecondary, inputClass, rowBtnDanger } from "@/lib/ui";
+import { useToast } from "@/context/ToastContext";
+import { useConfirm } from "@/context/ConfirmContext";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
+import Modal from "@/components/Modal";
+import FormField from "@/components/FormField";
 
-const emptyForm = { fullName: "", email: "", password: "" };
+interface LecturerForm {
+  fullName: string;
+  email: string;
+  password: string;
+}
+
+const emptyForm: LecturerForm = { fullName: "", email: "", password: "" };
+
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  password?: string;
+}
+
+async function fetchData(): Promise<{ lecturers: User[]; courses: Course[] }> {
+  const [lecturers, courses] = await Promise.all([
+    adminService.getLecturers(),
+    courseService.getAll(),
+  ]);
+  return { lecturers, courses };
+}
 
 export default function LecturersPage() {
+  const toast = useToast();
+  const { confirm } = useConfirm();
+
   const [lecturers, setLecturers] = useState<User[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<LecturerForm>(emptyForm);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let ignore = false;
-    adminService
-      .getLecturers()
+    fetchData()
       .then((data) => {
-        if (!ignore) setLecturers(data);
+        if (ignore) return;
+        setLecturers(data.lecturers);
+        setCourses(data.courses);
       })
       .catch((err) => {
         if (!ignore) setError(getErrorMessage(err));
@@ -38,7 +72,9 @@ export default function LecturersPage() {
 
   async function reload() {
     try {
-      setLecturers(await adminService.getLecturers());
+      const data = await fetchData();
+      setLecturers(data.lecturers);
+      setCourses(data.courses);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -46,20 +82,57 @@ export default function LecturersPage() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function openCreate() {
+    setForm({ ...emptyForm });
+    setErrors({});
+    setFormError(null);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    if (!saving) setModalOpen(false);
+  }
+
+  function validate(): FormErrors {
+    const found: FormErrors = {};
+    if (!form.fullName.trim()) found.fullName = "Full name is required";
+
+    if (!form.email.trim()) {
+      found.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+      found.email = "Enter a valid email address";
+    }
+
+    if (!form.password) {
+      found.password = "Password is required";
+    } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(form.password)) {
+      found.password =
+        "Use 8 to 72 characters with at least one letter and one number";
+    }
+    return found;
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSaving(true);
     setFormError(null);
+
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length > 0) return;
+
+    setSaving(true);
     try {
       await adminService.createLecturer({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         password: form.password,
       });
-      setForm(emptyForm);
+      toast.success("Lecturer added");
+      setModalOpen(false);
       await reload();
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -69,98 +142,173 @@ export default function LecturersPage() {
   }
 
   async function handleDelete(lecturer: User) {
-    if (!window.confirm(`Delete lecturer "${lecturer.fullName}"?`)) return;
+    const ok = await confirm({
+      title: "Delete lecturer",
+      message: `Delete ${lecturer.fullName}? Their login will stop working.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+
     try {
       await adminService.deleteLecturer(lecturer.id);
+      toast.success("Lecturer deleted");
       await reload();
     } catch (err) {
-      setError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     }
   }
 
-  const inputClass = "rounded border border-slate-300 px-3 py-2";
+  const courseCount = (lecturerId: number) =>
+    courses.filter((c) => c.lecturer?.id === lecturerId).length;
+
+  const filtered = lecturers.filter((l) =>
+    `${l.fullName} ${l.email}`.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Lecturers</h1>
-
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg bg-white p-4 shadow">
-        <h2 className="text-lg font-semibold">Add a lecturer</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <input
-            name="fullName"
-            value={form.fullName}
-            onChange={handleChange}
-            placeholder="Full name"
-            required
-            className={inputClass}
-          />
-          <input
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Email"
-            required
-            className={inputClass}
-          />
-          <input
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={handleChange}
-            placeholder="Temporary password (8+ chars, letter and number)"
-            required
-            className={inputClass}
-          />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Lecturers</h1>
+          <p className="text-slate-600">
+            Create lecturer accounts. Assign them to courses on the Courses page.
+          </p>
         </div>
-        {formError && <p className="text-sm text-red-600">{formError}</p>}
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-slate-900 px-4 py-2 text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Add lecturer"}
+        <button onClick={openCreate} className={btnPrimary}>
+          + Add lecturer
         </button>
-      </form>
+      </div>
 
       {loading ? (
         <Loading message="Loading lecturers..." />
       ) : error ? (
         <ErrorMessage message={error} onRetry={reload} />
-      ) : lecturers.length === 0 ? (
-        <p className="rounded bg-white p-6 text-center text-slate-500 shadow">
-          No lecturers yet. Add the first one above.
-        </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg bg-white shadow">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-100 text-slate-600">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lecturers.map((l) => (
-                <tr key={l.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{l.fullName}</td>
-                  <td className="px-4 py-3">{l.email}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(l)}
-                      className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or email..."
+            aria-label="Search lecturers"
+            className={`md:w-80 ${inputClass}`}
+          />
+
+          {filtered.length === 0 ? (
+            <div className="rounded-lg bg-white p-8 text-center shadow">
+              <p className="text-slate-600">
+                {lecturers.length === 0
+                  ? "No lecturers yet."
+                  : "No lecturers match your search."}
+              </p>
+              {lecturers.length === 0 && (
+                <button onClick={openCreate} className={`mt-4 ${btnPrimary}`}>
+                  Add the first lecturer
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg bg-white shadow">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-100 text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Courses</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((l) => {
+                    const count = courseCount(l.id);
+                    return (
+                      <tr key={l.id} className="border-t">
+                        <td className="px-4 py-3 font-medium">{l.fullName}</td>
+                        <td className="px-4 py-3">{l.email}</td>
+                        <td className="px-4 py-3">
+                          {count > 0 ? (
+                            count
+                          ) : (
+                            <span className="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                              None assigned
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleDelete(l)}
+                            className={rowBtnDanger}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
+
+      <Modal open={modalOpen} title="Add a lecturer" onClose={closeModal}>
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <FormField label="Full name" htmlFor="fullName" error={errors.fullName}>
+            <input
+              id="fullName"
+              name="fullName"
+              value={form.fullName}
+              onChange={handleChange}
+              autoFocus
+              className={inputClass}
+            />
+          </FormField>
+
+          <FormField label="Email" htmlFor="email" error={errors.email}>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </FormField>
+
+          <FormField
+            label="Temporary password"
+            htmlFor="password"
+            error={errors.password}
+            hint="8 to 72 characters, with at least one letter and one number."
+          >
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              value={form.password}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </FormField>
+
+          {formError && (
+            <p className="rounded bg-red-50 p-3 text-sm text-red-700">
+              {formError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={closeModal} className={btnSecondary}>
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className={btnPrimary}>
+              {saving ? "Saving..." : "Add lecturer"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
