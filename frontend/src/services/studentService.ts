@@ -30,4 +30,9 @@ export const studentService = {
     const response = await api.delete<Student>(`/api/students/${studentId}/course`);
     return response.data;
   },
+
+  getMe: async (): Promise<Student> => {
+    const response = await api.get<Student>("/api/me/student");
+    return response.data;
+  },
 };
