@@ -1,6 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { getErrorMessage } from "@/lib/api";
+import { homeFor } from "@/lib/roles";
 
 interface FormErrors {
   email?: string;
@@ -8,10 +13,21 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
+  const { user, loading, login } = useAuth();
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
-  const [notice, setNotice] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Already logged in? Go to the right home page
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace(homeFor(user.role));
+    }
+  }, [loading, user, router]);
 
   function validate(): FormErrors {
     const found: FormErrors = {};
@@ -22,22 +38,27 @@ export default function LoginPage() {
     }
     if (!password) {
       found.password = "Password is required";
-    } else if (password.length < 6) {
-      found.password = "Password must be at least 6 characters";
     }
     return found;
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setNotice(null);
+    setServerError(null);
 
     const found = validate();
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    // TODO (Day 4): call POST /api/auth/login, store the JWT, redirect to /dashboard
-    setNotice("Form is valid. Login will be connected to the backend on Day 4.");
+    setSubmitting(true);
+    try {
+      const loggedIn = await login({ email: email.trim(), password });
+      router.replace(homeFor(loggedIn.role));
+    } catch (err) {
+      setServerError(getErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inputClass = "w-full rounded border border-slate-300 px-3 py-2";
@@ -61,6 +82,7 @@ export default function LoginPage() {
           <input
             id="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
@@ -76,26 +98,33 @@ export default function LoginPage() {
           <input
             id="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             className={inputClass}
           />
-          {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-          )}
+          {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
         </div>
 
-        {notice && (
-          <p className="rounded bg-blue-50 p-3 text-sm text-blue-700">{notice}</p>
+        {serverError && (
+          <p className="rounded bg-red-50 p-3 text-sm text-red-700">{serverError}</p>
         )}
 
         <button
           type="submit"
-          className="w-full rounded bg-slate-900 py-2 text-white hover:bg-slate-700"
+          disabled={submitting}
+          className="w-full rounded bg-slate-900 py-2 text-white hover:bg-slate-700 disabled:opacity-50"
         >
-          Sign in
+          {submitting ? "Signing in..." : "Sign in"}
         </button>
+
+        <p className="text-center text-sm text-slate-600">
+          New student?{" "}
+          <Link href="/register" className="font-medium text-slate-900 underline">
+            Create an account
+          </Link>
+        </p>
       </form>
     </div>
   );
