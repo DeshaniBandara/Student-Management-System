@@ -1,0 +1,17 @@
+$kind: http-request
+url: http://localhost:8080/api/auth/login
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"email\": \"admin@uov.com\",\r
+
+    \  \"password\": \"AdU123$%\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: pm.collectionVariables.set("token", pm.response.json().token);
+    language: text/javascript
+order: 16000

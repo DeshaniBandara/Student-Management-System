@@ -1,2 +1,10 @@
 $kind: collection
 name: Student Management System
+variables:
+  token: ""
+auth:
+  - id: 532c6939-0cf4-49a8-b2f1-5f76ce8a4015
+    type: bearer
+    name: Bearer Token
+    credentials:
+      token: "{{token}}"
