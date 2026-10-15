@@ -39,8 +39,7 @@ public class AuthService {
         user.setFullName(request.fullName().trim());
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setRole(Role.USER); // registration never creates admins
-
+        user.setRole(Role.STUDENT); // public registration never creates admins or lecturers
         return UserMapper.toResponse(userRepository.save(user));
     }
 
