@@ -3,11 +3,15 @@ package com.gamage.student_management_system.service;
 import com.gamage.student_management_system.dto.request.CourseRequest;
 import com.gamage.student_management_system.dto.response.CourseResponse;
 import com.gamage.student_management_system.entity.Course;
+import com.gamage.student_management_system.entity.Role;
+import com.gamage.student_management_system.entity.User;
+import com.gamage.student_management_system.exception.BadRequestException;
 import com.gamage.student_management_system.exception.ConflictException;
 import com.gamage.student_management_system.exception.ResourceNotFoundException;
 import com.gamage.student_management_system.mapper.CourseMapper;
 import com.gamage.student_management_system.repository.CourseRepository;
 import com.gamage.student_management_system.repository.StudentRepository;
+import com.gamage.student_management_system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +24,7 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final StudentRepository studentRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<CourseResponse> getAll() {
@@ -35,14 +40,16 @@ public class CourseService {
 
     @Transactional
     public CourseResponse create(CourseRequest request) {
-        Course saved = courseRepository.save(CourseMapper.toEntity(request));
-        return CourseMapper.toResponse(saved);
+        Course course = CourseMapper.toEntity(request);
+        course.setLecturer(resolveLecturer(request.lecturerId()));
+        return CourseMapper.toResponse(courseRepository.save(course));
     }
 
     @Transactional
     public CourseResponse update(Long id, CourseRequest request) {
         Course course = findCourse(id);
         CourseMapper.updateEntity(course, request);
+        course.setLecturer(resolveLecturer(request.lecturerId()));
         return CourseMapper.toResponse(courseRepository.save(course));
     }
 
@@ -58,5 +65,17 @@ public class CourseService {
     private Course findCourse(Long id) {
         return courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id " + id));
+    }
+
+    private User resolveLecturer(Long lecturerId) {
+        if (lecturerId == null) {
+            return null;
+        }
+        User user = userRepository.findById(lecturerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lecturer not found with id " + lecturerId));
+        if (user.getRole() != Role.LECTURER) {
+            throw new BadRequestException("The selected user is not a lecturer");
+        }
+        return user;
     }
 }

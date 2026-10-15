@@ -16,6 +16,8 @@ public record CourseRequest(
 
         @NotNull(message = "Credits are required")
         @Positive(message = "Credits must be a positive number")
-        Integer credits
+        Integer credits,
+
+        Long lecturerId
 ) {
 }

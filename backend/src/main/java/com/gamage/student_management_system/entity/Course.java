@@ -13,6 +13,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+
 public class Course {
 
     @Id
@@ -26,6 +27,9 @@ public class Course {
     private String description;
 
     private Integer credits;
+    @ManyToOne
+    @JoinColumn(name = "lecturer_id")
+    private User lecturer;
 
     @OneToMany(mappedBy = "course")
     private List<Student> students = new ArrayList<>();

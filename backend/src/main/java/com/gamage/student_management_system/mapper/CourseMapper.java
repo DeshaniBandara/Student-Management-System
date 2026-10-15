@@ -14,7 +14,9 @@ public final class CourseMapper {
                 course.getId(),
                 course.getTitle(),
                 course.getDescription(),
-                course.getCredits()
+                course.getCredits(),
+                course.getLecturer() == null ? null : UserMapper.toResponse(course.getLecturer()),
+                course.getStudents().size()
         );
     }
 

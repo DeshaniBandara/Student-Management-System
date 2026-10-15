@@ -4,6 +4,8 @@ public record CourseResponse(
         Long id,
         String title,
         String description,
-        Integer credits
+        Integer credits,
+        UserResponse lecturer,
+        int studentCount
 ) {
 }
