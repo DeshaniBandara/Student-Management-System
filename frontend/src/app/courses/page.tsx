@@ -1,16 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Course, CourseRequest } from "@/types";
+import type { Course, CourseRequest, User } from "@/types";
 import { courseService } from "@/services/courseService";
+import { adminService } from "@/services/adminService";
 import { getErrorMessage } from "@/lib/api";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/ErrorMessage";
 
-const emptyForm = { title: "", description: "", credits: "" };
+const emptyForm = { title: "", description: "", credits: "", lecturerId: "" };
+
+async function fetchData() {
+  const [courses, lecturers] = await Promise.all([
+    courseService.getAll(),
+    adminService.getLecturers(),
+  ]);
+  return { courses, lecturers };
+}
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [lecturers, setLecturers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,13 +29,13 @@ export default function CoursesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Load the courses once when the page opens
   useEffect(() => {
     let ignore = false;
-    courseService
-      .getAll()
+    fetchData()
       .then((data) => {
-        if (!ignore) setCourses(data);
+        if (ignore) return;
+        setCourses(data.courses);
+        setLecturers(data.lecturers);
       })
       .catch((err) => {
         if (!ignore) setError(getErrorMessage(err));
@@ -40,14 +50,18 @@ export default function CoursesPage() {
 
   async function reload() {
     try {
-      setCourses(await courseService.getAll());
+      const data = await fetchData();
+      setCourses(data.courses);
+      setLecturers(data.lecturers);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
     }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
@@ -63,8 +77,10 @@ export default function CoursesPage() {
       title: course.title,
       description: course.description ?? "",
       credits: String(course.credits),
+      lecturerId: course.lecturer ? String(course.lecturer.id) : "",
     });
     setFormError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -76,6 +92,7 @@ export default function CoursesPage() {
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       credits: Number(form.credits),
+      lecturerId: form.lecturerId ? Number(form.lecturerId) : null,
     };
 
     try {
@@ -103,24 +120,25 @@ export default function CoursesPage() {
     }
   }
 
+  const inputClass = "rounded border border-slate-300 px-3 py-2";
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Courses</h1>
 
-      {/* Add / edit form */}
       <form onSubmit={handleSubmit} className="space-y-4 rounded-lg bg-white p-4 shadow">
         <h2 className="text-lg font-semibold">
           {editingId === null ? "Add a course" : "Edit course"}
         </h2>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <input
             name="title"
             value={form.title}
             onChange={handleChange}
             placeholder="Title"
             required
-            className="rounded border border-slate-300 px-3 py-2"
+            className={inputClass}
           />
           <input
             name="credits"
@@ -130,15 +148,28 @@ export default function CoursesPage() {
             onChange={handleChange}
             placeholder="Credits"
             required
-            className="rounded border border-slate-300 px-3 py-2"
+            className={inputClass}
           />
           <input
             name="description"
             value={form.description}
             onChange={handleChange}
             placeholder="Description (optional)"
-            className="rounded border border-slate-300 px-3 py-2"
+            className={inputClass}
           />
+          <select
+            name="lecturerId"
+            value={form.lecturerId}
+            onChange={handleChange}
+            className={inputClass}
+          >
+            <option value="">No lecturer assigned</option>
+            {lecturers.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.fullName}
+              </option>
+            ))}
+          </select>
         </div>
 
         {formError && <p className="text-sm text-red-600">{formError}</p>}
@@ -163,7 +194,6 @@ export default function CoursesPage() {
         </div>
       </form>
 
-      {/* List */}
       {loading ? (
         <Loading message="Loading courses..." />
       ) : error ? (
@@ -178,17 +208,30 @@ export default function CoursesPage() {
             <thead className="bg-slate-100 text-slate-600">
               <tr>
                 <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Lecturer</th>
                 <th className="px-4 py-3">Credits</th>
+                <th className="px-4 py-3">Students</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {courses.map((course) => (
                 <tr key={course.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{course.title}</td>
-                  <td className="px-4 py-3">{course.description ?? "-"}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{course.title}</p>
+                    <p className="text-slate-500">{course.description ?? ""}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    {course.lecturer ? (
+                      course.lecturer.fullName
+                    ) : (
+                      <span className="rounded bg-amber-100 px-2 py-1 text-amber-800">
+                        Not assigned
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{course.credits}</td>
+                  <td className="px-4 py-3">{course.studentCount}</td>
                   <td className="space-x-2 px-4 py-3 text-right">
                     <button
                       onClick={() => handleEdit(course)}
