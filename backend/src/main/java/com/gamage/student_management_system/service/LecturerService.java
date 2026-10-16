@@ -60,9 +60,12 @@ public class LecturerService {
         User lecturer = userRepository.findById(id)
                 .filter(user -> user.getRole() == Role.LECTURER)
                 .orElseThrow(() -> new ResourceNotFoundException("Lecturer not found with id " + id));
-        if (courseRepository.existsByLecturerId(id)) {
-            throw new ConflictException("Cannot delete a lecturer who is assigned to courses");
-        }
+
+        // Courses taught by this lecturer become "not assigned"
+        List<Course> taught = courseRepository.findByLecturerId(id);
+        taught.forEach(course -> course.setLecturer(null));
+        courseRepository.saveAll(taught);
+
         userRepository.delete(lecturer);
     }
 

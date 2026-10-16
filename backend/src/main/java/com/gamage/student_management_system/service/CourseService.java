@@ -4,9 +4,9 @@ import com.gamage.student_management_system.dto.request.CourseRequest;
 import com.gamage.student_management_system.dto.response.CourseResponse;
 import com.gamage.student_management_system.entity.Course;
 import com.gamage.student_management_system.entity.Role;
+import com.gamage.student_management_system.entity.Student;
 import com.gamage.student_management_system.entity.User;
 import com.gamage.student_management_system.exception.BadRequestException;
-import com.gamage.student_management_system.exception.ConflictException;
 import com.gamage.student_management_system.exception.ResourceNotFoundException;
 import com.gamage.student_management_system.mapper.CourseMapper;
 import com.gamage.student_management_system.repository.CourseRepository;
@@ -53,12 +53,15 @@ public class CourseService {
         return CourseMapper.toResponse(courseRepository.save(course));
     }
 
+    // Deleting a course leaves its students without a course (they can be reassigned)
     @Transactional
     public void delete(Long id) {
         Course course = findCourse(id);
-        if (studentRepository.existsByCourseId(id)) {
-            throw new ConflictException("Cannot delete a course that has students");
-        }
+
+        List<Student> enrolled = studentRepository.findByCourseId(id);
+        enrolled.forEach(student -> student.setCourse(null));
+        studentRepository.saveAll(enrolled);
+
         courseRepository.delete(course);
     }
 

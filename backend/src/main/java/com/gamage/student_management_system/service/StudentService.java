@@ -63,12 +63,16 @@ public class StudentService {
     @Transactional
     public StudentResponse update(Long id, StudentRequest request) {
         Student student = findStudent(id);
-        if (studentRepository.existsByEmailAndIdNot(request.email(), id)) {
-            throw new ConflictException("Email already exists");
-        }
         StudentMapper.updateEntity(student, request);
-        student.setCourse(resolveCourse(request.courseId()));
-        return StudentMapper.toResponse(studentRepository.save(student));
+
+        // ⚠️ TEMPORARY TEST — hardcoded course 2
+        Course course = courseRepository.findById(2L).orElse(null);
+        System.out.println(">>> TEST course loaded: " + (course == null ? "null" : course.getTitle()));
+        student.setCourse(course);
+
+        Student saved = studentRepository.save(student);
+        System.out.println(">>> TEST after save: " + (saved.getCourse() == null ? "null" : saved.getCourse().getTitle()));
+        return StudentMapper.toResponse(saved);
     }
 
     @Transactional
@@ -102,4 +106,6 @@ public class StudentService {
         return courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id " + courseId));
     }
+
+    
 }

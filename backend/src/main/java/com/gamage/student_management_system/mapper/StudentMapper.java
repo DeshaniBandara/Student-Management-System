@@ -27,6 +27,7 @@ public final class StudentMapper {
         return student;
     }
 
+
     public static void updateEntity(Student student, StudentRequest request) {
         student.setFirstName(request.firstName());
         student.setLastName(request.lastName());
