@@ -67,7 +67,7 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 text-center shadow">
           <h1 className="text-2xl font-bold">Account created</h1>
           <p className="text-slate-600">You can now sign in with your email and password.</p>
@@ -83,7 +83,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
         noValidate

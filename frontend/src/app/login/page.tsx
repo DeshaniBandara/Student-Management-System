@@ -64,7 +64,7 @@ export default function LoginPage() {
   const inputClass = "w-full rounded border border-slate-300 px-3 py-2";
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
         noValidate
