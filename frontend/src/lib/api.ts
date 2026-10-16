@@ -5,6 +5,7 @@ import { authStorage } from "@/lib/authStorage";
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080",
   headers: { "Content-Type": "application/json" },
+  timeout: 15000,
 });
 
 // Attach the token to every request
@@ -45,8 +46,11 @@ export function getErrorMessage(error: unknown): string {
       return data.message;
     }
   }
+  if (axiosError.response) {
+    return `The request failed (status ${axiosError.response.status}).`;
+  }
   if (axiosError.request) {
-    return "Cannot reach the server. Please check that the backend is running.";
+    return "Cannot reach the server. Check that the backend is running and that this site is allowed by CORS.";
   }
   return "Something went wrong. Please try again.";
 }
