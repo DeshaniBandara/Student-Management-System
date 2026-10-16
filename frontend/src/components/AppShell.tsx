@@ -57,7 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {user && (
-        <div className="border-t border-slate-100 hover:bg-slate-50 border-slate-800 p-4">
+        <div className="border-t border-slate-800 hover:bg-slate-800/50 p-4">
           <div className="flex items-center gap-3">
             <Avatar name={user.fullName} />
             <div className="min-w-0">
@@ -71,7 +71,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <button
             onClick={handleLogout}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-500 hover:text-white"
           >
             <LogOut size={16} />
             Log out

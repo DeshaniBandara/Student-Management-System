@@ -34,7 +34,7 @@ async function fetchData() {
 
 export default function CoursesPage() {
   const toast = useToast();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();          // ✅ destructured at the top
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [lecturers, setLecturers] = useState<User[]>([]);
@@ -80,12 +80,13 @@ export default function CoursesPage() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function openCreate() {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
     setErrors({});
     setFormError(null);
     setModalOpen(true);
@@ -154,9 +155,15 @@ export default function CoursesPage() {
   }
 
   async function handleDelete(course: Course) {
+    // ✅ use the confirm from the top of the component — no hook call here
+    const warning =
+      course.studentCount > 0
+        ? ` ${course.studentCount} enrolled student(s) will be left without a course.`
+        : "";
+
     const ok = await confirm({
       title: "Delete course",
-      message: `Delete "${course.title}"? This cannot be undone.`,
+      message: `Delete "${course.title}"?${warning} This cannot be undone.`,
       confirmLabel: "Delete",
       danger: true,
     });

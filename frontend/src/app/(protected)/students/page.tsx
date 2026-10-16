@@ -46,7 +46,7 @@ async function fetchData() {
 
 export default function StudentsPage() {
   const toast = useToast();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -95,12 +95,13 @@ export default function StudentsPage() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function openCreate() {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
     setErrors({});
     setFormError(null);
     setModalOpen(true);
@@ -165,6 +166,10 @@ export default function StudentsPage() {
       phone: form.phone.trim() || undefined,
       courseId: form.courseId ? Number(form.courseId) : null,
     };
+
+    // 🔍 DEBUG — remove these once the bug is fixed
+    console.log("👉 CURRENT form:", form);
+    console.log("👉 PAYLOAD:", payload);
 
     setSaving(true);
     try {
@@ -432,7 +437,10 @@ export default function StudentsPage() {
               id="courseId"
               name="courseId"
               value={form.courseId}
-              onChange={handleChange}
+              onChange={(e) => {
+                console.log("🎯 DROPDOWN CHANGED →", e.target.value);
+                handleChange(e);
+              }}
               className={inputClass}
             >
               <option value="">No course</option>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Inbox, Plus } from "lucide-react";
 import type { Course, User } from "@/types";
 import { adminService } from "@/services/adminService";
 import { courseService } from "@/services/courseService";
@@ -9,15 +8,18 @@ import { getErrorMessage } from "@/lib/api";
 import { btnPrimary, btnSecondary, inputClass, rowBtnDanger } from "@/lib/ui";
 import { useToast } from "@/context/ToastContext";
 import { useConfirm } from "@/context/ConfirmContext";
-import Badge from "@/components/Badge";
-import EmptyState from "@/components/EmptyState";
-import ErrorMessage from "@/components/ErrorMessage";
-import FormField from "@/components/FormField";
 import Loading from "@/components/Loading";
+import ErrorMessage from "@/components/ErrorMessage";
 import Modal from "@/components/Modal";
-import PageHeader from "@/components/PageHeader";
+import FormField from "@/components/FormField";
 
-const emptyForm = { fullName: "", email: "", password: "" };
+interface LecturerForm {
+  fullName: string;
+  email: string;
+  password: string;
+}
+
+const emptyForm: LecturerForm = { fullName: "", email: "", password: "" };
 
 interface FormErrors {
   fullName?: string;
@@ -25,7 +27,7 @@ interface FormErrors {
   password?: string;
 }
 
-async function fetchData() {
+async function fetchData(): Promise<{ lecturers: User[]; courses: Course[] }> {
   const [lecturers, courses] = await Promise.all([
     adminService.getLecturers(),
     courseService.getAll(),
@@ -35,7 +37,7 @@ async function fetchData() {
 
 export default function LecturersPage() {
   const toast = useToast();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();          // ✅ hook at top of component
 
   const [lecturers, setLecturers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -44,7 +46,7 @@ export default function LecturersPage() {
   const [search, setSearch] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<LecturerForm>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -80,11 +82,12 @@ export default function LecturersPage() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function openCreate() {
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
     setErrors({});
     setFormError(null);
     setModalOpen(true);
@@ -107,7 +110,8 @@ export default function LecturersPage() {
     if (!form.password) {
       found.password = "Password is required";
     } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(form.password)) {
-      found.password = "Use 8 to 72 characters with at least one letter and one number";
+      found.password =
+        "Use 8 to 72 characters with at least one letter and one number";
     }
     return found;
   }
@@ -137,10 +141,21 @@ export default function LecturersPage() {
     }
   }
 
+  // ✅ helper: returns the list of courses taught by this lecturer
+  const coursesOf = (lecturerId: number) =>
+    courses.filter((c) => c.lecturer?.id === lecturerId);
+
+  // ✅ helper: returns the count
+  const courseCount = (lecturerId: number) => coursesOf(lecturerId).length;
+
   async function handleDelete(lecturer: User) {
+    const taught = courseCount(lecturer.id);   // ✅ uses the count helper
+    const warning =
+      taught > 0 ? `${taught} course(s) will be left without a lecturer.` : "";
+
     const ok = await confirm({
       title: "Delete lecturer",
-      message: `Delete ${lecturer.fullName}? Their login will stop working.`,
+      message: `Delete ${lecturer.fullName}? ${warning} Their login will stop working.`,
       confirmLabel: "Delete",
       danger: true,
     });
@@ -155,24 +170,23 @@ export default function LecturersPage() {
     }
   }
 
-  const courseCount = (lecturerId: number) =>
-    courses.filter((c) => c.lecturer?.id === lecturerId).length;
-
   const filtered = lecturers.filter((l) =>
     `${l.fullName} ${l.email}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Lecturers"
-        description="Create lecturer accounts. Assign them to courses on the Courses page."
-        action={
-          <button onClick={openCreate} className={btnPrimary}>
-            <Plus size={16} /> Add lecturer
-          </button>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Lecturers</h1>
+          <p className="text-slate-600">
+            Create lecturer accounts. Assign them to courses on the Courses page.
+          </p>
+        </div>
+        <button onClick={openCreate} className={btnPrimary}>
+          + Add lecturer
+        </button>
+      </div>
 
       {loading ? (
         <Loading message="Loading lecturers..." />
@@ -189,28 +203,22 @@ export default function LecturersPage() {
           />
 
           {filtered.length === 0 ? (
-            lecturers.length === 0 ? (
-              <EmptyState
-                icon={Inbox}
-                title="No lecturers yet"
-                description="Add your first lecturer so you can assign them to courses."
-                action={
-                  <button onClick={openCreate} className={btnPrimary}>
-                    Add lecturer
-                  </button>
-                }
-              />
-            ) : (
-              <EmptyState
-                icon={Inbox}
-                title="No lecturers match your search"
-                description="Try a different name or email."
-              />
-            )
+            <div className="rounded-lg bg-white p-8 text-center shadow">
+              <p className="text-slate-600">
+                {lecturers.length === 0
+                  ? "No lecturers yet."
+                  : "No lecturers match your search."}
+              </p>
+              {lecturers.length === 0 && (
+                <button onClick={openCreate} className={`mt-4 ${btnPrimary}`}>
+                  Add the first lecturer
+                </button>
+              )}
+            </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg bg-white shadow">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <thead className="bg-slate-100 text-slate-600">
                   <tr>
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Email</th>
@@ -222,14 +230,26 @@ export default function LecturersPage() {
                   {filtered.map((l) => {
                     const count = courseCount(l.id);
                     return (
-                      <tr key={l.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <tr
+                        key={l.id}
+                        className="border-t border-slate-100 hover:bg-slate-50"
+                      >
                         <td className="px-4 py-3 font-medium">{l.fullName}</td>
                         <td className="px-4 py-3">{l.email}</td>
                         <td className="px-4 py-3">
-                          {count > 0 ? count : <Badge tone="amber">None assigned</Badge>}
+                          {count > 0 ? (
+                            count
+                          ) : (
+                            <span className="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                              None assigned
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button onClick={() => handleDelete(l)} className={rowBtnDanger}>
+                          <button
+                            onClick={() => handleDelete(l)}
+                            className={rowBtnDanger}
+                          >
                             Delete
                           </button>
                         </td>
@@ -285,7 +305,7 @@ export default function LecturersPage() {
           </FormField>
 
           {formError && (
-            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p className="rounded bg-red-50 p-3 text-sm text-red-700">
               {formError}
             </p>
           )}
