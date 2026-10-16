@@ -26,10 +26,8 @@ public record StudentRequest(
         Integer age,
 
         @Pattern(regexp = "^[0-9+\\-\\s]{7,15}$", message = "Phone number is not valid")
-        String phone
+        String phone,
 
+        Long courseId
 ) {
-    public Long courseId() {
-        return null;
-    }
 }
