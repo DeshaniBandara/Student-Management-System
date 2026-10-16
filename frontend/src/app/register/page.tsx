@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/lib/api";
+import { btnPrimary, inputClass } from "@/lib/ui";
+import AuthShell from "@/components/AuthShell";
+import FormField from "@/components/FormField";
 
 interface FormErrors {
   fullName?: string;
@@ -19,6 +23,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -63,56 +68,33 @@ export default function RegisterPage() {
     }
   }
 
-  const inputClass = "w-full rounded border border-slate-300 px-3 py-2";
-
   if (done) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 text-center shadow">
-          <h1 className="text-2xl font-bold">Account created</h1>
-          <p className="text-slate-600">You can now sign in with your email and password.</p>
-          <Link
-            href="/login"
-            className="inline-block rounded bg-slate-900 px-4 py-2 text-white hover:bg-slate-700"
-          >
-            Go to sign in
-          </Link>
-        </div>
-      </div>
+      <AuthShell title="Account created" subtitle="You can now sign in with your email and password.">
+        <Link href="/login" className={`w-full ${btnPrimary}`}>
+          Go to sign in
+        </Link>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow"
-      >
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="text-sm text-slate-500">
-            Use the email address your administrator registered for you.
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="fullName" className="mb-1 block text-sm font-medium">
-            Full name
-          </label>
+    <AuthShell
+      title="Create your account"
+      subtitle="Use the email address your administrator registered for you."
+    >
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <FormField label="Full name" htmlFor="fullName" error={errors.fullName}>
           <input
             id="fullName"
+            autoComplete="name"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             className={inputClass}
           />
-          {errors.fullName && <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>}
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium">
-            Email
-          </label>
+        <FormField label="Email" htmlFor="email" error={errors.email}>
           <input
             id="email"
             type="email"
@@ -121,58 +103,62 @@ export default function RegisterPage() {
             onChange={(e) => setEmail(e.target.value)}
             className={inputClass}
           />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-          />
-          {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-        </div>
+        <FormField
+          label="Password"
+          htmlFor="password"
+          error={errors.password}
+          hint="8 to 72 characters, with at least one letter and one number."
+        >
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`${inputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="confirm" className="mb-1 block text-sm font-medium">
-            Confirm password
-          </label>
+        <FormField label="Confirm password" htmlFor="confirm" error={errors.confirm}>
           <input
             id="confirm"
-            type="password"
+            type={showPassword ? "text" : "password"}
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             className={inputClass}
           />
-          {errors.confirm && <p className="mt-1 text-sm text-red-600">{errors.confirm}</p>}
-        </div>
+        </FormField>
 
         {serverError && (
-          <p className="rounded bg-red-50 p-3 text-sm text-red-700">{serverError}</p>
+          <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {serverError}
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded bg-slate-900 py-2 text-white hover:bg-slate-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={submitting} className={`w-full ${btnPrimary}`}>
           {submitting ? "Creating account..." : "Create account"}
         </button>
 
         <p className="text-center text-sm text-slate-600">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-slate-900 underline">
+          <Link href="/login" className="font-medium text-brand-700 hover:underline">
             Sign in
           </Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

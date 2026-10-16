@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/lib/api";
 import { homeFor } from "@/lib/roles";
+import { btnPrimary, inputClass } from "@/lib/ui";
+import AuthShell from "@/components/AuthShell";
+import FormField from "@/components/FormField";
 
 interface FormErrors {
   email?: string;
@@ -18,6 +22,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -61,24 +66,10 @@ export default function LoginPage() {
     }
   }
 
-  const inputClass = "w-full rounded border border-slate-300 px-3 py-2";
-
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow"
-      >
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Student Management</h1>
-          <p className="text-sm text-slate-500">Sign in to your account</p>
-        </div>
-
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium">
-            Email
-          </label>
+    <AuthShell title="Welcome back" subtitle="Sign in to your account to continue.">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <FormField label="Email" htmlFor="email" error={errors.email}>
           <input
             id="email"
             type="email"
@@ -88,44 +79,47 @@ export default function LoginPage() {
             placeholder="you@example.com"
             className={inputClass}
           />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className={inputClass}
-          />
-          {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-        </div>
+        <FormField label="Password" htmlFor="password" error={errors.password}>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              className={`${inputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </FormField>
 
         {serverError && (
-          <p className="rounded bg-red-50 p-3 text-sm text-red-700">{serverError}</p>
+          <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {serverError}
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded bg-slate-900 py-2 text-white hover:bg-slate-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={submitting} className={`w-full ${btnPrimary}`}>
           {submitting ? "Signing in..." : "Sign in"}
         </button>
 
         <p className="text-center text-sm text-slate-600">
           New student?{" "}
-          <Link href="/register" className="font-medium text-slate-900 underline">
+          <Link href="/register" className="font-medium text-brand-700 hover:underline">
             Create an account
           </Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }
