@@ -1,12 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Inbox, Plus } from "lucide-react";
 import type { Course, Student, StudentRequest } from "@/types";
 import { studentService } from "@/services/studentService";
 import { courseService } from "@/services/courseService";
 import { getErrorMessage } from "@/lib/api";
-import Loading from "@/components/Loading";
+import { btnPrimary, btnSecondary, inputClass, rowBtn, rowBtnDanger } from "@/lib/ui";
+import { useToast } from "@/context/ToastContext";
+import { useConfirm } from "@/context/ConfirmContext";
+import Badge from "@/components/Badge";
+import EmptyState from "@/components/EmptyState";
 import ErrorMessage from "@/components/ErrorMessage";
+import FormField from "@/components/FormField";
+import Loading from "@/components/Loading";
+import Modal from "@/components/Modal";
+import PageHeader from "@/components/PageHeader";
+
+const PAGE_SIZE = 10;
 
 const emptyForm = {
   firstName: "",
@@ -17,26 +28,49 @@ const emptyForm = {
   courseId: "",
 };
 
+interface FormErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  age?: string;
+  phone?: string;
+}
+
+async function fetchData() {
+  const [students, courses] = await Promise.all([
+    studentService.getAll(),
+    courseService.getAll(),
+  ]);
+  return { students, courses };
+}
+
 export default function StudentsPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
+
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
+  const [courseFilter, setCourseFilter] = useState("");
+  const [page, setPage] = useState(1);
 
-  const [form, setForm] = useState(emptyForm);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Load students and courses together when the page opens
   useEffect(() => {
     let ignore = false;
-    Promise.all([studentService.getAll(), courseService.getAll()])
-      .then(([studentData, courseData]) => {
+    fetchData()
+      .then((data) => {
         if (ignore) return;
-        setStudents(studentData);
-        setCourses(courseData);
+        setStudents(data.students);
+        setCourses(data.courses);
       })
       .catch((err) => {
         if (!ignore) setError(getErrorMessage(err));
@@ -51,31 +85,28 @@ export default function StudentsPage() {
 
   async function reload() {
     try {
-      const [studentData, courseData] = await Promise.all([
-        studentService.getAll(),
-        courseService.getAll(),
-      ]);
-      setStudents(studentData);
-      setCourses(courseData);
+      const data = await fetchData();
+      setStudents(data.students);
+      setCourses(data.courses);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
     }
   }
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  function resetForm() {
-    setForm(emptyForm);
+  function openCreate() {
     setEditingId(null);
+    setForm(emptyForm);
+    setErrors({});
     setFormError(null);
+    setModalOpen(true);
   }
 
-  function handleEdit(student: Student) {
+  function openEdit(student: Student) {
     setEditingId(student.id);
     setForm({
       firstName: student.firstName,
@@ -85,14 +116,46 @@ export default function StudentsPage() {
       phone: student.phone ?? "",
       courseId: student.course ? String(student.course.id) : "",
     });
+    setErrors({});
     setFormError(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    if (!saving) setModalOpen(false);
+  }
+
+  function validate(): FormErrors {
+    const found: FormErrors = {};
+    if (!form.firstName.trim()) found.firstName = "First name is required";
+    if (!form.lastName.trim()) found.lastName = "Last name is required";
+
+    if (!form.email.trim()) {
+      found.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+      found.email = "Enter a valid email address";
+    }
+
+    if (form.age) {
+      const age = Number(form.age);
+      if (!Number.isInteger(age) || age < 1 || age > 120) {
+        found.age = "Age must be between 1 and 120";
+      }
+    }
+
+    if (form.phone.trim() && !/^[0-9+\-\s]{7,15}$/.test(form.phone.trim())) {
+      found.phone = "Use 7 to 15 digits (you may include + or -)";
+    }
+    return found;
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSaving(true);
     setFormError(null);
+
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length > 0) return;
 
     const payload: StudentRequest = {
       firstName: form.firstName.trim(),
@@ -100,28 +163,19 @@ export default function StudentsPage() {
       email: form.email.trim(),
       age: form.age ? Number(form.age) : undefined,
       phone: form.phone.trim() || undefined,
+      courseId: form.courseId ? Number(form.courseId) : null,
     };
 
+    setSaving(true);
     try {
-      // Step 1: create or update the student's own details
-      const saved =
-        editingId === null
-          ? await studentService.create(payload)
-          : await studentService.update(editingId, payload);
-
-      // Step 2: only call the course endpoints if the course choice changed
-      const wantedCourseId = form.courseId ? Number(form.courseId) : null;
-      const currentCourseId = saved.course?.id ?? null;
-
-      if (wantedCourseId !== currentCourseId) {
-        if (wantedCourseId === null) {
-          await studentService.removeCourse(saved.id);
-        } else {
-          await studentService.assignCourse(saved.id, wantedCourseId);
-        }
+      if (editingId === null) {
+        await studentService.create(payload);
+        toast.success("Student added");
+      } else {
+        await studentService.update(editingId, payload);
+        toast.success("Student updated");
       }
-
-      resetForm();
+      setModalOpen(false);
       await reload();
     } catch (err) {
       setFormError(getErrorMessage(err));
@@ -131,186 +185,281 @@ export default function StudentsPage() {
   }
 
   async function handleDelete(student: Student) {
-    if (!window.confirm(`Delete ${student.firstName} ${student.lastName}?`)) return;
+    const ok = await confirm({
+      title: "Delete student",
+      message: `Delete ${student.firstName} ${student.lastName}? This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+
     try {
       await studentService.remove(student.id);
+      toast.success("Student deleted");
       await reload();
     } catch (err) {
-      setError(getErrorMessage(err));
+      toast.error(getErrorMessage(err));
     }
   }
 
-  const filtered = students.filter((s) =>
-    `${s.firstName} ${s.lastName} ${s.email}`
+  const filtered = students.filter((s) => {
+    const matchesSearch = `${s.firstName} ${s.lastName} ${s.email}`
       .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+      .includes(search.toLowerCase());
+    const matchesCourse =
+      courseFilter === "" ||
+      (courseFilter === "none" ? !s.course : s.course?.id === Number(courseFilter));
+    return matchesSearch && matchesCourse;
+  });
 
-  const inputClass = "rounded border border-slate-300 px-3 py-2";
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Students</h1>
-
-      {/* Add / edit form */}
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg bg-white p-4 shadow">
-        <h2 className="text-lg font-semibold">
-          {editingId === null ? "Add a student" : "Edit student"}
-        </h2>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <input
-            name="firstName"
-            value={form.firstName}
-            onChange={handleChange}
-            placeholder="First name"
-            required
-            className={inputClass}
-          />
-          <input
-            name="lastName"
-            value={form.lastName}
-            onChange={handleChange}
-            placeholder="Last name"
-            required
-            className={inputClass}
-          />
-          <input
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Email"
-            required
-            className={inputClass}
-          />
-          <input
-            name="age"
-            type="number"
-            min="1"
-            max="120"
-            value={form.age}
-            onChange={handleChange}
-            placeholder="Age (optional)"
-            className={inputClass}
-          />
-          <input
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="Phone (optional)"
-            className={inputClass}
-          />
-          <select
-            name="courseId"
-            value={form.courseId}
-            onChange={handleChange}
-            className={inputClass}
-          >
-            <option value="">No course</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {formError && <p className="text-sm text-red-600">{formError}</p>}
-
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded bg-slate-900 px-4 py-2 text-white hover:bg-slate-700 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : editingId === null ? "Add student" : "Save changes"}
+      <PageHeader
+        title="Students"
+        description="Manage student records and their courses."
+        action={
+          <button onClick={openCreate} className={btnPrimary}>
+            <Plus size={16} /> Add student
           </button>
-          {editingId !== null && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded border border-slate-300 px-4 py-2 hover:bg-slate-100"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      </form>
+        }
+      />
 
-      {/* List */}
       {loading ? (
         <Loading message="Loading students..." />
       ) : error ? (
         <ErrorMessage message={error} onRetry={reload} />
       ) : (
         <div className="space-y-3">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className={`w-full md:w-80 ${inputClass}`}
-          />
+          <div className="flex flex-wrap gap-3">
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search by name or email..."
+              aria-label="Search students"
+              className={`md:w-80 ${inputClass}`}
+            />
+            <select
+              value={courseFilter}
+              onChange={(e) => {
+                setCourseFilter(e.target.value);
+                setPage(1);
+              }}
+              aria-label="Filter by course"
+              className={`md:w-64 ${inputClass}`}
+            >
+              <option value="">All courses</option>
+              <option value="none">No course</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {filtered.length === 0 ? (
-            <p className="rounded bg-white p-6 text-center text-slate-500 shadow">
-              {students.length === 0
-                ? "No students yet. Add the first one above."
-                : "No students match your search."}
-            </p>
+            students.length === 0 ? (
+              <EmptyState
+                icon={Inbox}
+                title="No students yet"
+                description="Add your first student to get started."
+                action={
+                  <button onClick={openCreate} className={btnPrimary}>
+                    Add student
+                  </button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={Inbox}
+                title="No students match your filters"
+                description="Try a different name, email or course."
+              />
+            )
           ) : (
-            <div className="overflow-x-auto rounded-lg bg-white shadow">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-100 text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Age</th>
-                    <th className="px-4 py-3">Phone</th>
-                    <th className="px-4 py-3">Course</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s) => (
-                    <tr key={s.id} className="border-t">
-                      <td className="px-4 py-3 font-medium">
-                        {s.firstName} {s.lastName}
-                      </td>
-                      <td className="px-4 py-3">{s.email}</td>
-                      <td className="px-4 py-3">{s.age ?? "-"}</td>
-                      <td className="px-4 py-3">{s.phone ?? "-"}</td>
-                      <td className="px-4 py-3">
-                        {s.course ? (
-                          <span className="rounded bg-slate-100 px-2 py-1">
-                            {s.course.title}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="space-x-2 px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleEdit(s)}
-                          className="rounded border border-slate-300 px-3 py-1 hover:bg-slate-100"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(s)}
-                          className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
-                        >
-                          Delete
-                        </button>
-                      </td>
+            <>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Name</th>
+                      <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">Age</th>
+                      <th className="px-4 py-3">Phone</th>
+                      <th className="px-4 py-3">Course</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paged.map((s) => (
+                      <tr key={s.id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium">
+                          {s.firstName} {s.lastName}
+                        </td>
+                        <td className="px-4 py-3">{s.email}</td>
+                        <td className="px-4 py-3">{s.age ?? "-"}</td>
+                        <td className="px-4 py-3">{s.phone ?? "-"}</td>
+                        <td className="px-4 py-3">
+                          {s.course ? (
+                            <Badge>{s.course.title}</Badge>
+                          ) : (
+                            <Badge tone="amber">No course</Badge>
+                          )}
+                        </td>
+                        <td className="space-x-2 px-4 py-3 text-right">
+                          <button onClick={() => openEdit(s)} className={rowBtn}>
+                            Edit
+                          </button>
+                          <button onClick={() => handleDelete(s)} className={rowBtnDanger}>
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+                <span>
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1} to{" "}
+                  {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={btnSecondary}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={btnSecondary}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
+
+      <Modal
+        open={modalOpen}
+        title={editingId === null ? "Add a student" : "Edit student"}
+        onClose={closeModal}
+      >
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="First name" htmlFor="firstName" error={errors.firstName}>
+              <input
+                id="firstName"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                autoFocus
+                className={inputClass}
+              />
+            </FormField>
+            <FormField label="Last name" htmlFor="lastName" error={errors.lastName}>
+              <input
+                id="lastName"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </FormField>
+          </div>
+
+          <FormField
+            label="Email"
+            htmlFor="email"
+            error={errors.email}
+            hint="The student registers with this email to see their own page."
+          >
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </FormField>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Age" htmlFor="age" error={errors.age} hint="Optional">
+              <input
+                id="age"
+                name="age"
+                type="number"
+                value={form.age}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </FormField>
+            <FormField label="Phone" htmlFor="phone" error={errors.phone} hint="Optional">
+              <input
+                id="phone"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </FormField>
+          </div>
+
+          <FormField
+            label="Course"
+            htmlFor="courseId"
+            hint="Optional. You can assign one later."
+          >
+            <select
+              id="courseId"
+              name="courseId"
+              value={form.courseId}
+              onChange={handleChange}
+              className={inputClass}
+            >
+              <option value="">No course</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          {formError && (
+            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {formError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={closeModal} className={btnSecondary}>
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className={btnPrimary}>
+              {saving ? "Saving..." : editingId === null ? "Add student" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

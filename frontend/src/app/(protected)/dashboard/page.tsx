@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BookOpen, Check, Info, Presentation, Users } from "lucide-react";
 import type { Course, Student, User } from "@/types";
 import { studentService } from "@/services/studentService";
 import { courseService } from "@/services/courseService";
 import { adminService } from "@/services/adminService";
 import { getErrorMessage } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import Loading from "@/components/Loading";
+import Avatar from "@/components/Avatar";
+import Badge from "@/components/Badge";
 import ErrorMessage from "@/components/ErrorMessage";
+import Loading from "@/components/Loading";
+import PageHeader from "@/components/PageHeader";
+import StatCard from "@/components/StatCard";
 
 async function fetchData() {
   const [students, courses, lecturers] = await Promise.all([
@@ -65,38 +70,26 @@ export default function DashboardPage() {
   if (loading) return <Loading message="Loading dashboard..." />;
   if (error) return <ErrorMessage message={error} onRetry={handleRetry} />;
 
-  const studentsWithoutCourse = students.filter((s) => !s.course).length;
-  const coursesWithoutLecturer = courses.filter((c) => !c.lecturer).length;
-  const lecturersWithoutCourse = lecturers.filter(
-    (l) => !courses.some((c) => c.lecturer?.id === l.id)
-  ).length;
-
   const attention = [
     {
-      count: studentsWithoutCourse,
+      count: students.filter((s) => !s.course).length,
       text: "students are not enrolled in a course",
       href: "/students",
       action: "Review students",
     },
     {
-      count: coursesWithoutLecturer,
+      count: courses.filter((c) => !c.lecturer).length,
       text: "courses have no lecturer assigned",
       href: "/courses",
       action: "Assign lecturers",
     },
     {
-      count: lecturersWithoutCourse,
+      count: lecturers.filter((l) => !courses.some((c) => c.lecturer?.id === l.id)).length,
       text: "lecturers have no course yet",
       href: "/courses",
       action: "Assign courses",
     },
   ].filter((item) => item.count > 0);
-
-  const stats = [
-    { label: "Students", value: students.length, href: "/students" },
-    { label: "Lecturers", value: lecturers.length, href: "/lecturers" },
-    { label: "Courses", value: courses.length, href: "/courses" },
-  ];
 
   const perCourse = courses.map((c) => ({
     id: c.id,
@@ -109,43 +102,40 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Welcome back, {user?.fullName}</h1>
-        <p className="text-slate-600">Here is an overview of your system.</p>
-      </div>
+      <PageHeader
+        title={`Welcome back, ${user?.fullName.split(" ")[0] ?? ""}`}
+        description="Here is an overview of your system."
+      />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {stats.map((s) => (
-          <Link
-            key={s.label}
-            href={s.href}
-            className="rounded-lg bg-white p-5 shadow transition hover:shadow-md"
-          >
-            <p className="text-sm text-slate-500">{s.label}</p>
-            <p className="mt-2 text-3xl font-bold">{s.value}</p>
-          </Link>
-        ))}
+        <StatCard label="Students" value={students.length} href="/students" icon={Users} />
+        <StatCard label="Lecturers" value={lecturers.length} href="/lecturers" icon={Presentation} />
+        <StatCard label="Courses" value={courses.length} href="/courses" icon={BookOpen} />
       </div>
 
-      <section className="rounded-lg bg-white p-5 shadow">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-lg font-semibold">Needs your attention</h2>
         {attention.length === 0 ? (
-          <p className="rounded bg-emerald-50 p-3 text-emerald-800">
-            Everything is set up. Every student has a course and every course has a lecturer.
-          </p>
+          <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-4 text-emerald-800">
+            <Check size={20} />
+            <span>Everything is set up. Every student has a course and every course has a lecturer.</span>
+          </div>
         ) : (
           <ul className="space-y-2">
             {attention.map((item) => (
               <li
                 key={item.text}
-                className="flex flex-wrap items-center justify-between gap-2 rounded bg-amber-50 p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 p-3"
               >
-                <span className="text-amber-900">
-                  <strong>{item.count}</strong> {item.text}
+                <span className="flex items-center gap-2 text-amber-900">
+                  <Info size={18} />
+                  <span>
+                    <strong>{item.count}</strong> {item.text}
+                  </span>
                 </span>
                 <Link
                   href={item.href}
-                  className="rounded border border-amber-300 px-3 py-1 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                  className="rounded-md border border-amber-300 bg-white px-3 py-1 text-sm font-medium text-amber-900 hover:bg-amber-100"
                 >
                   {item.action}
                 </Link>
@@ -156,21 +146,21 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg bg-white p-5 shadow">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">Students per course</h2>
           {perCourse.length === 0 ? (
-            <p className="text-slate-500">No courses yet.</p>
+            <p className="text-sm text-slate-500">No courses yet.</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {perCourse.map((c) => (
                 <li key={c.id}>
                   <div className="mb-1 flex justify-between text-sm">
-                    <span>{c.title}</span>
-                    <span className="font-medium">{c.count}</span>
+                    <span className="font-medium">{c.title}</span>
+                    <span className="text-slate-500">{c.count}</span>
                   </div>
-                  <div className="h-2 rounded bg-slate-100">
+                  <div className="h-2 rounded-full bg-slate-100">
                     <div
-                      className="h-2 rounded bg-slate-700"
+                      className="h-2 rounded-full bg-brand-600"
                       style={{ width: `${(c.count / maxCount) * 100}%` }}
                     />
                   </div>
@@ -180,21 +170,22 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="rounded-lg bg-white p-5 shadow">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">Recently added students</h2>
           {recent.length === 0 ? (
-            <p className="text-slate-500">No students yet.</p>
+            <p className="text-sm text-slate-500">No students yet.</p>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-slate-100">
               {recent.map((s) => (
-                <li key={s.id} className="flex items-center justify-between py-2 text-sm">
-                  <div>
-                    <p className="font-medium">
+                <li key={s.id} className="flex items-center gap-3 py-3">
+                  <Avatar name={`${s.firstName} ${s.lastName}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
                       {s.firstName} {s.lastName}
                     </p>
-                    <p className="text-slate-500">{s.email}</p>
+                    <p className="truncate text-xs text-slate-500">{s.email}</p>
                   </div>
-                  <span className="text-slate-600">{s.course?.title ?? "No course"}</span>
+                  {s.course ? <Badge>{s.course.title}</Badge> : <Badge tone="amber">No course</Badge>}
                 </li>
               ))}
             </ul>
