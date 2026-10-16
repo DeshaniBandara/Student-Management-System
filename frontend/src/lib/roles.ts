@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Presentation, Users } from "lucide-react";
 import type { Role } from "@/types";
 
 export const homeFor = (role: Role): string => {
@@ -23,15 +25,21 @@ export const roleBadgeClass: Record<Role, string> = {
   STUDENT: "bg-emerald-100 text-emerald-800",
 };
 
-export const linksByRole: Record<Role, { href: string; label: string }[]> = {
+export interface NavLink {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+export const linksByRole: Record<Role, NavLink[]> = {
   ADMIN: [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/students", label: "Students" },
-    { href: "/lecturers", label: "Lecturers" },
-    { href: "/courses", label: "Courses" },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/students", label: "Students", icon: Users },
+    { href: "/lecturers", label: "Lecturers", icon: Presentation },
+    { href: "/courses", label: "Courses", icon: BookOpen },
   ],
-  LECTURER: [{ href: "/my-courses", label: "My Courses" }],
-  STUDENT: [{ href: "/my-course", label: "My Course" }],
+  LECTURER: [{ href: "/my-courses", label: "My Courses", icon: BookOpen }],
+  STUDENT: [{ href: "/my-course", label: "My Course", icon: GraduationCap }],
 };
 
 // The single source of truth: which roles may open which routes
