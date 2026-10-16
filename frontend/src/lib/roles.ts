@@ -33,3 +33,21 @@ export const linksByRole: Record<Role, { href: string; label: string }[]> = {
   LECTURER: [{ href: "/my-courses", label: "My Courses" }],
   STUDENT: [{ href: "/my-course", label: "My Course" }],
 };
+
+// The single source of truth: which roles may open which routes
+const routeAccess: { prefix: string; roles: Role[] }[] = [
+  { prefix: "/dashboard", roles: ["ADMIN"] },
+  { prefix: "/students", roles: ["ADMIN"] },
+  { prefix: "/courses", roles: ["ADMIN"] },
+  { prefix: "/lecturers", roles: ["ADMIN"] },
+  { prefix: "/my-courses", roles: ["LECTURER"] },
+  { prefix: "/my-course", roles: ["STUDENT"] },
+];
+
+// Returns the allowed roles for a path, or null if the route has no extra restriction
+export function requiredRoles(pathname: string): Role[] | null {
+  const match = routeAccess.find(
+    (r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/")
+  );
+  return match ? match.roles : null;
+}
