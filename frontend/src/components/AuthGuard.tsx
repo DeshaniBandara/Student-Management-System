@@ -1,22 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { homeFor } from "@/lib/roles";
-import type { Role } from "@/types";
+import { homeFor, requiredRoles } from "@/lib/roles";
 import Loading from "@/components/Loading";
 
-export default function AuthGuard({
-  roles,
-  children,
-}: {
-  roles: Role[];
-  children: React.ReactNode;
-}) {
+export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,7 +22,8 @@ export default function AuthGuard({
     return <Loading message="Checking your session..." />;
   }
 
-  if (!roles.includes(user.role)) {
+  const allowed = requiredRoles(pathname);
+  if (allowed && !allowed.includes(user.role)) {
     return (
       <div className="mx-auto max-w-md rounded-lg bg-white p-6 text-center shadow">
         <h1 className="text-xl font-bold">Access denied</h1>
