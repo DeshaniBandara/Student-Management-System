@@ -1,42 +1,43 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { homeFor, requiredRoles } from "@/lib/roles";
-import Loading from "@/components/Loading";
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
+type Role = "ADMIN" | "LECTURER" | "STUDENT";
+
+interface AuthGuardProps {
+  children: React.ReactNode;
+  roles?: Role[];
+}
+
+export default function AuthGuard({ children, roles }: AuthGuardProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    // Not logged in → go to login
+    if (!user) {
       router.replace("/login");
+      return;
     }
-  }, [loading, user, router]);
 
-  if (loading || !user) {
-    return <Loading message="Checking your session..." />;
-  }
+    // Logged in but wrong role → send to their own dashboard
+    if (roles && !roles.includes(user.role as Role)) {
+      router.replace("/dashboard");
+    }
+  }, [user, loading, roles, router]);
 
-  const allowed = requiredRoles(pathname);
-  if (allowed && !allowed.includes(user.role)) {
-    return (
-      <div className="mx-auto max-w-md rounded-lg bg-white p-6 text-center shadow">
-        <h1 className="text-xl font-bold">Access denied</h1>
-        <p className="mt-2 text-slate-600">You do not have permission to view this page.</p>
-        <Link
-          href={homeFor(user.role)}
-          className="mt-4 inline-block rounded bg-slate-900 px-4 py-2 text-white hover:bg-slate-700"
-        >
-          Go to my home page
-        </Link>
-      </div>
-    );
-  }
+  // While session is being checked, render nothing
+  if (loading) return null;
+
+  // Not logged in
+  if (!user) return null;
+
+  // Wrong role
+  if (roles && !roles.includes(user.role as Role)) return null;
 
   return <>{children}</>;
 }
