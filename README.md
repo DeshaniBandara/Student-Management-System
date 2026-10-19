@@ -74,7 +74,7 @@ Response JSON <- Response DTO <- Service (maps Entity to DTO)
 
 The system was designed around the people who use it and the tasks each of them needs to perform.
 
-### Personas
+### People
 
 | Role | Who they are | Their goal |
 |---|---|---|
