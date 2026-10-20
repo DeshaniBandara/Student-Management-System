@@ -1,0 +1,5 @@
+$kind: http-request
+name: Create Student
+url: ""
+method: GET
+order: 21000
