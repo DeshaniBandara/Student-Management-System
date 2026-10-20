@@ -1,4 +1,5 @@
 package com.gamage.student_management_system.dto.request;
+import jakarta.validation.constraints.NotNull;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
@@ -24,7 +25,7 @@ public record StudentRequest(
         @Size(max = 255, message = "Email must be at most 255 characters")//Set the max size of the email
         String email,
 
-        @NotBlank(message = "Age is required")//Avoid to keep blank
+        @NotNull(message = "Age is required")//Avoid to keep blank
         @Min(value = 18, message = "Age must be at least 18")
         @Max(value = 50, message = "Age must be at most 50")
         Integer age,
@@ -33,7 +34,7 @@ public record StudentRequest(
         @Pattern(regexp = "^(?:\\+94|0)[0-9]{9}$", message = "Phone number must be 10 or 11 digits and can be started with +94 or 0")//To keep valid entering valid phone numbers
         String phone,
 
-        @NotBlank(message = "Course ID is required")//Course can not be empty , Must add a course now
+        @NotNull(message = "Course ID is required")//Course can not be empty , Must add a course now
         Long courseId
 ) {
 }
