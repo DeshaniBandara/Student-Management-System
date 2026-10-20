@@ -17,7 +17,9 @@ public final class StudentMapper {
                 student.getEmail(),
                 student.getAge(),
                 student.getPhone(),
+                student.getNic(),
                 student.getCourse() == null ? null : CourseMapper.toResponse(student.getCourse())
+
         );
     }
 
@@ -34,5 +36,6 @@ public final class StudentMapper {
         student.setEmail(request.email());
         student.setAge(request.age());
         student.setPhone(request.phone());
+        student.setNic(request.nic());
     }
 }

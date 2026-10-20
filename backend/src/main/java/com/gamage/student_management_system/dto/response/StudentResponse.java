@@ -7,6 +7,8 @@ public record StudentResponse(
         String email,
         Integer age,
         String phone,
+        String nic,
         CourseResponse course
+
 ) {
 }

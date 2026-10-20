@@ -55,6 +55,10 @@ public class StudentService {
         if (studentRepository.existsByEmail(request.email())) {
             throw new ConflictException("Email already exists");
         }
+        //To check whether NIC is available or not
+        if (studentRepository.existsByNic(request.nic())) {
+            throw new ConflictException("A student with this NIC already exists");
+        }
         Student student = StudentMapper.toEntity(request);
         student.setCourse(resolveCourse(request.courseId()));
         return StudentMapper.toResponse(studentRepository.save(student));
@@ -107,5 +111,4 @@ public class StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id " + courseId));
     }
 
-    
 }

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+
 public record StudentRequest(
 
         @NotBlank(message = "First name is required")//To assign like can not keep blank
@@ -35,6 +36,12 @@ public record StudentRequest(
         String phone,
 
         @NotNull(message = "Course ID is required")//Course can not be empty , Must add a course now
-        Long courseId
-) {
-}
+        Long courseId,
+
+
+        @NotBlank(message = "NIC is required")
+        @Pattern(regexp = "^([0-9]{9}[vVxX]|[0-9]{12})$", message = "Invalid NIC format (e.g., 123456789V or 200012345678)") //To check whether the NIC matches with both old and new formats
+                String nic
+
+)
+{}
