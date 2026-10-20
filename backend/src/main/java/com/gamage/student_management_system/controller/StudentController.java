@@ -39,7 +39,7 @@ public class StudentController {
     }
 
     @PutMapping("/{studentId}/course/{courseId}")
-    public StudentResponse assignCourse(@PathVariable Long studentId, @PathVariable Long courseId) {
+    public StudentResponse assignCourse(@PathVariable Long studentId,@Valid @PathVariable Long courseId) {
         return studentService.assignCourse(studentId, courseId);
     }
 
