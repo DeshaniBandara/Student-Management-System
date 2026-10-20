@@ -139,13 +139,13 @@ export default function StudentsPage() {
 
     if (form.age) {
       const age = Number(form.age);
-      if (!Number.isInteger(age) || age < 1 || age > 120) {
-        found.age = "Age must be between 1 and 120";
+      if (!Number.isInteger(age) || age < 18 || age > 50) {
+        found.age = "Age must be between 18 and 50";
       }
     }
 
-    if (form.phone.trim() && !/^[0-9+\-\s]{7,15}$/.test(form.phone.trim())) {
-      found.phone = "Use 7 to 15 digits (you may include + or -)";
+    if (form.phone.trim() && !/^(?:\+94|0)[0-9]{9}$/.test(form.phone.trim())) {
+      found.phone = "Enter a valid phone number (e.g., +94771234567 or 0771234567)";
     }
     return found;
   }
@@ -164,7 +164,7 @@ export default function StudentsPage() {
       email: form.email.trim(),
       age: form.age ? Number(form.age) : undefined,
       phone: form.phone.trim() || undefined,
-      courseId: form.courseId ? Number(form.courseId) : null,
+      courseId: form.courseId ? Number(form.courseId) : undefined,
     };
 
     // 🔍 DEBUG — remove these once the bug is fixed
