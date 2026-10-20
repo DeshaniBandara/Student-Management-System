@@ -17,14 +17,13 @@ import Loading from "@/components/Loading";
 import Modal from "@/components/Modal";
 import PageHeader from "@/components/PageHeader";
 
-
 const PAGE_SIZE = 10;
 
 const emptyForm = {
   firstName: "",
   lastName: "",
   email: "",
-  nic: "", // ✅ NIC ADDED: Form එකට NIC එකතු කළා
+  nic: "",
   age: "",
   phone: "",
   courseId: "",
@@ -34,7 +33,7 @@ interface FormErrors {
   firstName?: string;
   lastName?: string;
   email?: string;
-  nic?: string; // ✅ NIC ADDED: Error එක පෙන්නන්න
+  nic?: string;
   age?: string;
   phone?: string;
   courseId?: string;
@@ -118,7 +117,7 @@ export default function StudentsPage() {
       firstName: student.firstName,
       lastName: student.lastName,
       email: student.email,
-      nic: student.nic ?? "", // ✅ NIC ADDED: Edit කරද්දි තියෙන NIC එක load කරනවා
+      nic: student.nic ?? "",
       age: student.age === null ? "" : String(student.age),
       phone: student.phone ?? "",
       courseId: student.course ? String(student.course.id) : "",
@@ -143,7 +142,6 @@ export default function StudentsPage() {
       found.email = "Enter a valid email address";
     }
 
-    // ✅ NIC ADDED: NIC එක හිස්ද සහ Format එක හරිද බලනවා (අකුරු 9+V/X හෝ අංක 12)
     if (!form.nic.trim()) {
       found.nic = "NIC is required";
     } else if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/.test(form.nic.trim())) {
@@ -184,7 +182,7 @@ export default function StudentsPage() {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       email: form.email.trim(),
-      nic: form.nic.trim(), // ✅ NIC ADDED: Backend එකට යවන Payload එකට NIC එක දැම්මා
+      nic: form.nic.trim(),
       age: form.age ? Number(form.age) : undefined,
       phone: form.phone.trim() || undefined,
       courseId: form.courseId ? Number(form.courseId) : undefined,
@@ -318,11 +316,12 @@ export default function StudentsPage() {
             <>
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 <table className="w-full text-left text-sm">
+                  {/* ⚠️ මෙතන <tr> එක ඇතුලේ කිසිම comment එකක් තියන්න එපා */}
                   <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="px-4 py-3">Name</th>
                       <th className="px-4 py-3">Email</th>
-                      <th className="px-4 py-3">NIC</th> {/* ✅ NIC ADDED: Table එකට NIC Column එක */}
+                      <th className="px-4 py-3">NIC</th>
                       <th className="px-4 py-3">Age</th>
                       <th className="px-4 py-3">Phone</th>
                       <th className="px-4 py-3">Course</th>
@@ -336,7 +335,7 @@ export default function StudentsPage() {
                           {s.firstName} {s.lastName}
                         </td>
                         <td className="px-4 py-3">{s.email}</td>
-                        <td className="px-4 py-3">{s.nic}</td> {/* ✅ NIC ADDED */}
+                        <td className="px-4 py-3">{s.nic}</td>
                         <td className="px-4 py-3">{s.age ?? "-"}</td>
                         <td className="px-4 py-3">{s.phone ?? "-"}</td>
                         <td className="px-4 py-3">
@@ -434,7 +433,6 @@ export default function StudentsPage() {
             />
           </FormField>
 
-          {/* ✅ NIC ADDED: අලුත් NIC Input Field එක */}
           <FormField
             label="NIC"
             htmlFor="nic"
