@@ -28,6 +28,9 @@ public class Student {
     private Integer age;
 
     private String phone;
+    @Column(nullable = false, unique = true)
+    private String nic;// to assign NIC as the unique value need to add it
+
 
     @ManyToOne
     @JoinColumn(name = "course_id")
