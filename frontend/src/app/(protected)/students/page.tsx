@@ -28,12 +28,14 @@ const emptyForm = {
   courseId: "",
 };
 
+// ✅ FIX 1: FormErrors එකට courseId එකතු කළා (මොකද Backend එකේ ඒක Required කරලා තියෙන්නේ)
 interface FormErrors {
   firstName?: string;
   lastName?: string;
   email?: string;
   age?: string;
   phone?: string;
+  courseId?: string;
 }
 
 async function fetchData() {
@@ -97,6 +99,8 @@ export default function StudentsPage() {
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    // ✅ FIX 2: User type කරද්දි ඒ field එකේ පරණ error එක අයින් කරනවා
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   }
 
   function openCreate() {
@@ -137,16 +141,26 @@ export default function StudentsPage() {
       found.email = "Enter a valid email address";
     }
 
-    if (form.age) {
+    // ✅ FIX 3: Backend එකේ වගේම Frontend එකේත් Age, Phone, Course අනිවාර්යයි කළා
+    if (!form.age) {
+      found.age = "Age is required";
+    } else {
       const age = Number(form.age);
       if (!Number.isInteger(age) || age < 18 || age > 50) {
         found.age = "Age must be between 18 and 50";
       }
     }
 
-    if (form.phone.trim() && !/^(?:\+94|0)[0-9]{9}$/.test(form.phone.trim())) {
+    if (!form.phone.trim()) {
+      found.phone = "Phone number is required";
+    } else if (!/^(?:\+94|0)[0-9]{9}$/.test(form.phone.trim())) {
       found.phone = "Enter a valid phone number (e.g., +94771234567 or 0771234567)";
     }
+
+    if (!form.courseId) {
+      found.courseId = "Please select a course";
+    }
+
     return found;
   }
 
@@ -167,10 +181,6 @@ export default function StudentsPage() {
       courseId: form.courseId ? Number(form.courseId) : undefined,
     };
 
-    // 🔍 DEBUG — remove these once the bug is fixed
-    console.log("👉 CURRENT form:", form);
-    console.log("👉 PAYLOAD:", payload);
-
     setSaving(true);
     try {
       if (editingId === null) {
@@ -182,8 +192,19 @@ export default function StudentsPage() {
       }
       setModalOpen(false);
       await reload();
-    } catch (err) {
-      setFormError(getErrorMessage(err));
+    } catch (err: any) {
+      // ✅ FIX 4 (ගොඩක් වැදගත්): Backend එකෙන් එන Validation Errors අල්ලගන්නවා
+      // Axios පාවිච්චි කරනවා නම් err.response.data වලින් error එක එනවා
+      const responseData = err.response?.data || err;
+      
+      if (responseData && responseData.validationErrors) {
+        // Backend එකෙන් එවපු Map එක (උදා: { "age": "Age is required" }) කෙලින්ම errors state එකට දානවා
+        setErrors(responseData.validationErrors);
+        setFormError("Please fix the highlighted errors below.");
+      } else {
+        // ඒක නෙවෙයි වෙන වෙනත් error එකක් නම් (උදා: 401 Unauthorized)
+        setFormError(getErrorMessage(err));
+      }
     } finally {
       setSaving(false);
     }
@@ -407,7 +428,8 @@ export default function StudentsPage() {
           </FormField>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Age" htmlFor="age" error={errors.age} hint="Optional">
+            {/* ✅ FIX 5: Hint වලින් "Optional" අයින් කළා. Backend එකේ මේවා Required නිසා. */}
+            <FormField label="Age" htmlFor="age" error={errors.age}>
               <input
                 id="age"
                 name="age"
@@ -417,7 +439,7 @@ export default function StudentsPage() {
                 className={inputClass}
               />
             </FormField>
-            <FormField label="Phone" htmlFor="phone" error={errors.phone} hint="Optional">
+            <FormField label="Phone" htmlFor="phone" error={errors.phone}>
               <input
                 id="phone"
                 name="phone"
@@ -428,22 +450,21 @@ export default function StudentsPage() {
             </FormField>
           </div>
 
+          {/* ✅ FIX 6: Course එකට error message එකක් පෙන්නන්න error={errors.courseId} දැම්මා */}
           <FormField
             label="Course"
             htmlFor="courseId"
-            hint="Optional. You can assign one later."
+            error={errors.courseId}
+            hint="Select the course this student belongs to."
           >
             <select
               id="courseId"
               name="courseId"
               value={form.courseId}
-              onChange={(e) => {
-                console.log("🎯 DROPDOWN CHANGED →", e.target.value);
-                handleChange(e);
-              }}
+              onChange={handleChange}
               className={inputClass}
             >
-              <option value="">No course</option>
+              <option value="">Select a course</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.title}
