@@ -22,13 +22,13 @@ public class Student {
     @Column(nullable = false)
     private String lastName;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true)//unique =true - can not use duplicate email
     private String email;
 
     private Integer age;
 
     private String phone;
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true)//unique =true - can not use duplicate phone no
     private String nic;// to assign NIC as the unique value need to add it
 
 

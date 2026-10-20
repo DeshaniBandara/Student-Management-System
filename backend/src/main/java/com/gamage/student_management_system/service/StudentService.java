@@ -59,6 +59,10 @@ public class StudentService {
         if (studentRepository.existsByNic(request.nic())) {
             throw new ConflictException("A student with this NIC already exists");
         }
+        //To check whether telephone no  is available or not
+        if (studentRepository.existsByPhone(request.phone())) {
+            throw new ConflictException("Phone number already exists");
+        }
         Student student = StudentMapper.toEntity(request);
         student.setCourse(resolveCourse(request.courseId()));
         return StudentMapper.toResponse(studentRepository.save(student));
@@ -67,16 +71,28 @@ public class StudentService {
     @Transactional
     public StudentResponse update(Long id, StudentRequest request) {
         Student student = findStudent(id);
+
+        // 1. Validation checks FIRST (before mutating the entity)
+        if (studentRepository.existsByEmailAndIdNot(request.email(), id)) {
+            throw new ConflictException("Email already exists");
+        }
+        if (studentRepository.existsByPhoneAndIdNot(request.phone(), id)) {
+            throw new ConflictException("Phone number already exists");
+        }
+        if (studentRepository.existsByNicAndIdNot(request.nic(), id)) {
+            throw new ConflictException("A student with this NIC already exists");
+        }
+
+        // 2. Map the new data to the existing entity
         StudentMapper.updateEntity(student, request);
 
-        // ⚠️ TEMPORARY TEST — hardcoded course 2
-        Course course = courseRepository.findById(2L).orElse(null);
-        System.out.println(">>> TEST course loaded: " + (course == null ? "null" : course.getTitle()));
+        // 3. Resolve and set the course (Removed the hardcoded test)
+        Course course = resolveCourse(request.courseId());
         student.setCourse(course);
 
-        Student saved = studentRepository.save(student);
-        System.out.println(">>> TEST after save: " + (saved.getCourse() == null ? "null" : saved.getCourse().getTitle()));
-        return StudentMapper.toResponse(saved);
+        // 4. Save and return
+        Student savedStudent = studentRepository.save(student);
+        return StudentMapper.toResponse(savedStudent);
     }
 
     @Transactional
