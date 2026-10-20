@@ -17,22 +17,24 @@ import Loading from "@/components/Loading";
 import Modal from "@/components/Modal";
 import PageHeader from "@/components/PageHeader";
 
+
 const PAGE_SIZE = 10;
 
 const emptyForm = {
   firstName: "",
   lastName: "",
   email: "",
+  nic: "", // ✅ NIC ADDED: Form එකට NIC එකතු කළා
   age: "",
   phone: "",
   courseId: "",
 };
 
-// ✅ FIX 1: FormErrors එකට courseId එකතු කළා (මොකද Backend එකේ ඒක Required කරලා තියෙන්නේ)
 interface FormErrors {
   firstName?: string;
   lastName?: string;
   email?: string;
+  nic?: string; // ✅ NIC ADDED: Error එක පෙන්නන්න
   age?: string;
   phone?: string;
   courseId?: string;
@@ -99,7 +101,6 @@ export default function StudentsPage() {
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // ✅ FIX 2: User type කරද්දි ඒ field එකේ පරණ error එක අයින් කරනවා
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   }
 
@@ -117,6 +118,7 @@ export default function StudentsPage() {
       firstName: student.firstName,
       lastName: student.lastName,
       email: student.email,
+      nic: student.nic ?? "", // ✅ NIC ADDED: Edit කරද්දි තියෙන NIC එක load කරනවා
       age: student.age === null ? "" : String(student.age),
       phone: student.phone ?? "",
       courseId: student.course ? String(student.course.id) : "",
@@ -141,7 +143,13 @@ export default function StudentsPage() {
       found.email = "Enter a valid email address";
     }
 
-    // ✅ FIX 3: Backend එකේ වගේම Frontend එකේත් Age, Phone, Course අනිවාර්යයි කළා
+    // ✅ NIC ADDED: NIC එක හිස්ද සහ Format එක හරිද බලනවා (අකුරු 9+V/X හෝ අංක 12)
+    if (!form.nic.trim()) {
+      found.nic = "NIC is required";
+    } else if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/.test(form.nic.trim())) {
+      found.nic = "Enter a valid NIC (e.g., 123456789V or 200012345678)";
+    }
+
     if (!form.age) {
       found.age = "Age is required";
     } else {
@@ -176,6 +184,7 @@ export default function StudentsPage() {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       email: form.email.trim(),
+      nic: form.nic.trim(), // ✅ NIC ADDED: Backend එකට යවන Payload එකට NIC එක දැම්මා
       age: form.age ? Number(form.age) : undefined,
       phone: form.phone.trim() || undefined,
       courseId: form.courseId ? Number(form.courseId) : undefined,
@@ -193,16 +202,12 @@ export default function StudentsPage() {
       setModalOpen(false);
       await reload();
     } catch (err: any) {
-      // ✅ FIX 4 (ගොඩක් වැදගත්): Backend එකෙන් එන Validation Errors අල්ලගන්නවා
-      // Axios පාවිච්චි කරනවා නම් err.response.data වලින් error එක එනවා
       const responseData = err.response?.data || err;
       
       if (responseData && responseData.validationErrors) {
-        // Backend එකෙන් එවපු Map එක (උදා: { "age": "Age is required" }) කෙලින්ම errors state එකට දානවා
         setErrors(responseData.validationErrors);
         setFormError("Please fix the highlighted errors below.");
       } else {
-        // ඒක නෙවෙයි වෙන වෙනත් error එකක් නම් (උදා: 401 Unauthorized)
         setFormError(getErrorMessage(err));
       }
     } finally {
@@ -229,7 +234,7 @@ export default function StudentsPage() {
   }
 
   const filtered = students.filter((s) => {
-    const matchesSearch = `${s.firstName} ${s.lastName} ${s.email}`
+    const matchesSearch = `${s.firstName} ${s.lastName} ${s.email} ${s.nic}`
       .toLowerCase()
       .includes(search.toLowerCase());
     const matchesCourse =
@@ -267,7 +272,7 @@ export default function StudentsPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search by name or email..."
+              placeholder="Search by name, email or NIC..."
               aria-label="Search students"
               className={`md:w-80 ${inputClass}`}
             />
@@ -317,6 +322,7 @@ export default function StudentsPage() {
                     <tr>
                       <th className="px-4 py-3">Name</th>
                       <th className="px-4 py-3">Email</th>
+                      <th className="px-4 py-3">NIC</th> {/* ✅ NIC ADDED: Table එකට NIC Column එක */}
                       <th className="px-4 py-3">Age</th>
                       <th className="px-4 py-3">Phone</th>
                       <th className="px-4 py-3">Course</th>
@@ -330,6 +336,7 @@ export default function StudentsPage() {
                           {s.firstName} {s.lastName}
                         </td>
                         <td className="px-4 py-3">{s.email}</td>
+                        <td className="px-4 py-3">{s.nic}</td> {/* ✅ NIC ADDED */}
                         <td className="px-4 py-3">{s.age ?? "-"}</td>
                         <td className="px-4 py-3">{s.phone ?? "-"}</td>
                         <td className="px-4 py-3">
@@ -427,8 +434,23 @@ export default function StudentsPage() {
             />
           </FormField>
 
+          {/* ✅ NIC ADDED: අලුත් NIC Input Field එක */}
+          <FormField
+            label="NIC"
+            htmlFor="nic"
+            error={errors.nic}
+            hint="Enter a valid NIC number (e.g., 199912345678 or 991234567V)."
+          >
+            <input
+              id="nic"
+              name="nic"
+              value={form.nic}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </FormField>
+
           <div className="grid gap-4 sm:grid-cols-2">
-            {/* ✅ FIX 5: Hint වලින් "Optional" අයින් කළා. Backend එකේ මේවා Required නිසා. */}
             <FormField label="Age" htmlFor="age" error={errors.age}>
               <input
                 id="age"
@@ -450,7 +472,6 @@ export default function StudentsPage() {
             </FormField>
           </div>
 
-          {/* ✅ FIX 6: Course එකට error message එකක් පෙන්නන්න error={errors.courseId} දැම්මා */}
           <FormField
             label="Course"
             htmlFor="courseId"
