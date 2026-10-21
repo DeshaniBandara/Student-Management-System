@@ -1,5 +1,6 @@
 package com.gamage.student_management_system.controller;
 
+import com.gamage.student_management_system.dto.request.ChangePasswordRequest;
 import com.gamage.student_management_system.dto.request.LoginRequest;
 import com.gamage.student_management_system.dto.request.RegisterRequest;
 import com.gamage.student_management_system.dto.response.AuthResponse;
@@ -32,5 +33,11 @@ public class AuthController {
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
         return authService.getCurrentUser(authentication.getName());
+    }
+    @PutMapping("/change-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(Authentication authentication,
+                               @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(authentication.getName(), request);
     }
 }

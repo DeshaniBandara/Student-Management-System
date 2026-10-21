@@ -1,5 +1,6 @@
 package com.gamage.student_management_system.service;
 
+import com.gamage.student_management_system.dto.request.ChangePasswordRequest;
 import com.gamage.student_management_system.dto.request.LoginRequest;
 import com.gamage.student_management_system.dto.request.RegisterRequest;
 import com.gamage.student_management_system.dto.response.AuthResponse;
@@ -85,4 +86,19 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return UserMapper.toResponse(user);
     }
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // 1. To check whther old password is correct or not
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+
+        // 2. To save new password after encode (The database is changed)
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+    }
+
 }
