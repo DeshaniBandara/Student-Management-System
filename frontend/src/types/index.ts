@@ -28,6 +28,7 @@ export interface RegisterRequest {
 
 export interface Course {
   id: number;
+  courseCode: string;//new field for course code
   title: string;
   description: string | null;
   credits: number;
@@ -36,6 +37,7 @@ export interface Course {
 }
 
 export interface CourseRequest {
+  courseCode: string; //new field for course code
   title: string;
   description?: string;
   credits: number;
@@ -71,6 +73,7 @@ export interface ApiError {
   message: string;
   path: string;
   validationErrors?: Record<string, string>;
+  lecturerId?: string;
 }
 export interface LecturerRequest {
   fullName: string;
