@@ -12,6 +12,7 @@ public final class CourseMapper {
     public static CourseResponse toResponse(Course course) {
         return new CourseResponse(
                 course.getId(),
+                course.getCourseCode(),//new
                 course.getTitle(),
                 course.getDescription(),
                 course.getCredits(),
@@ -27,6 +28,7 @@ public final class CourseMapper {
     }
 
     public static void updateEntity(Course course, CourseRequest request) {
+        course.setCourseCode(request.courseCode().toUpperCase());//new
         course.setTitle(request.title());
         course.setDescription(request.description());
         course.setCredits(request.credits());

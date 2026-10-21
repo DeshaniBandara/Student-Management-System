@@ -7,6 +7,7 @@ import com.gamage.student_management_system.entity.Role;
 import com.gamage.student_management_system.entity.Student;
 import com.gamage.student_management_system.entity.User;
 import com.gamage.student_management_system.exception.BadRequestException;
+import com.gamage.student_management_system.exception.ConflictException; // ✅ අලුතෙන් එකතු කළා
 import com.gamage.student_management_system.exception.ResourceNotFoundException;
 import com.gamage.student_management_system.mapper.CourseMapper;
 import com.gamage.student_management_system.repository.CourseRepository;
@@ -40,6 +41,12 @@ public class CourseService {
 
     @Transactional
     public CourseResponse create(CourseRequest request) {
+        // ✅ Duplicate Course Code එකක් තියෙනවද බලනවා (Uppercase කරලා)
+        String formattedCode = request.courseCode().trim().toUpperCase();
+        if (courseRepository.existsByCourseCode(formattedCode)) {
+            throw new ConflictException("Course code already exists");
+        }
+
         Course course = CourseMapper.toEntity(request);
         course.setLecturer(resolveLecturer(request.lecturerId()));
         return CourseMapper.toResponse(courseRepository.save(course));
@@ -48,6 +55,13 @@ public class CourseService {
     @Transactional
     public CourseResponse update(Long id, CourseRequest request) {
         Course course = findCourse(id);
+
+        // ✅ Update කරද්දි වෙනත් කෙනෙකුට මේ Course Code එක තියෙනවද බලනවා (මගේ ID එක හැර)
+        String formattedCode = request.courseCode().trim().toUpperCase();
+        if (courseRepository.existsByCourseCodeAndIdNot(formattedCode, id)) {
+            throw new ConflictException("Course code already exists");
+        }
+
         CourseMapper.updateEntity(course, request);
         course.setLecturer(resolveLecturer(request.lecturerId()));
         return CourseMapper.toResponse(courseRepository.save(course));
@@ -72,7 +86,7 @@ public class CourseService {
 
     private User resolveLecturer(Long lecturerId) {
         if (lecturerId == null) {
-            return null;
+            throw new BadRequestException("Lecturer is required for a course");
         }
         User user = userRepository.findById(lecturerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lecturer not found with id " + lecturerId));

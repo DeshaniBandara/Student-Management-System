@@ -20,12 +20,16 @@ public class Course {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true) //Unique Course Code
+    private String courseCode;
+
     @Column(nullable = false)
     private String title;
 
     @Column(length = 1000)
     private String description;
 
+    @Column(nullable = false)
     private Integer credits;
     @ManyToOne
     @JoinColumn(name = "lecturer_id")
