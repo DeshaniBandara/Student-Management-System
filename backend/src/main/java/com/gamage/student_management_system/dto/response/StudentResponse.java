@@ -5,9 +5,9 @@ public record StudentResponse(
         String firstName,
         String lastName,
         String email,
+        String nic,
         Integer age,
         String phone,
-        String nic,
         CourseResponse course
 
 ) {

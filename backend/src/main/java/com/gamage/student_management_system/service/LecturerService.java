@@ -1,6 +1,6 @@
 package com.gamage.student_management_system.service;
 
-import com.gamage.student_management_system.dto.request.RegisterRequest;
+import com.gamage.student_management_system.dto.request.LecturerRequest; // ✅ අලුත් DTO එක
 import com.gamage.student_management_system.dto.response.CourseResponse;
 import com.gamage.student_management_system.dto.response.StudentResponse;
 import com.gamage.student_management_system.dto.response.UserResponse;
@@ -41,17 +41,61 @@ public class LecturerService {
                 .toList();
     }
 
+    // ✅ අලුත් Lecturer කෙනෙක් හදන Method එක
     @Transactional
-    public UserResponse create(RegisterRequest request) {
+    public UserResponse create(LecturerRequest request) {
         String email = request.email().trim().toLowerCase();
+
+        // 1. Email එක දැනටමත් Database එකේ තියෙනවද බලනවා
         if (userRepository.existsByEmail(email)) {
             throw new ConflictException("Email is already registered");
         }
+
+        // 2. NIC එක දැනටමත් Database එකේ තියෙනවද බලනවා
+        if (userRepository.existsByNic(request.nic())) {
+            throw new ConflictException("A lecturer with this NIC already exists");
+        }
+
         User lecturer = new User();
         lecturer.setFullName(request.fullName().trim());
         lecturer.setEmail(email);
-        lecturer.setPassword(passwordEncoder.encode(request.password()));
+        lecturer.setNic(request.nic()); // NIC එක Set කිරීම
+        lecturer.setPassword(passwordEncoder.encode(request.password())); // Password එක Hash කිරීම
         lecturer.setRole(Role.LECTURER);
+
+        return UserMapper.toResponse(userRepository.save(lecturer));
+    }
+
+    // ✅ අලුතින් එකතු කරපු Edit/Update Method එක
+    @Transactional
+    public UserResponse update(Long id, LecturerRequest request) {
+        // 1. මුලින්ම අදාළ ID එකේ Lecturer ව හොයාගන්නවා
+        User lecturer = userRepository.findById(id)
+                .filter(user -> user.getRole() == Role.LECTURER)
+                .orElseThrow(() -> new ResourceNotFoundException("Lecturer not found with id " + id));
+
+        String email = request.email().trim().toLowerCase();
+
+        // 2. වෙනත් කෙනෙකුට මේ Email එක තියෙනවද බලනවා (තමන්ගේ ID එක හැර)
+        if (userRepository.existsByEmailAndIdNot(email, id)) {
+            throw new ConflictException("Email is already registered");
+        }
+
+        // 3. වෙනත් කෙනෙකුට මේ NIC එක තියෙනවද බලනවා (තමන්ගේ ID එක හැර)
+        if (userRepository.existsByNicAndIdNot(request.nic(), id)) {
+            throw new ConflictException("A lecturer with this NIC already exists");
+        }
+
+        // 4. දත්ත ටික Update කරනවා
+        lecturer.setFullName(request.fullName().trim());
+        lecturer.setEmail(email);
+        lecturer.setNic(request.nic());
+
+        // 5. Password එක Update කරන්න ඕන නම් විතරක් (හිස් නම් පරණ එකම තියන්න)
+        if (request.password() != null && !request.password().isBlank()) {
+            lecturer.setPassword(passwordEncoder.encode(request.password()));
+        }
+
         return UserMapper.toResponse(userRepository.save(lecturer));
     }
 

@@ -1,6 +1,6 @@
 package com.gamage.student_management_system.controller;
 
-import com.gamage.student_management_system.dto.request.RegisterRequest;
+import com.gamage.student_management_system.dto.request.LecturerRequest; // ✅ මේක වෙනස් කළා
 import com.gamage.student_management_system.dto.response.UserResponse;
 import com.gamage.student_management_system.service.LecturerService;
 import jakarta.validation.Valid;
@@ -24,8 +24,14 @@ public class AdminLecturerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponse create(@Valid @RequestBody RegisterRequest request) {
+    public UserResponse create(@Valid @RequestBody LecturerRequest request) {
         return lecturerService.create(request);
+    }
+
+    // ✅ අලුතින් එකතු කරපු Edit (Update) API එක
+    @PutMapping("/{id}")
+    public UserResponse update(@PathVariable Long id, @Valid @RequestBody LecturerRequest request) {
+        return lecturerService.update(id, request);
     }
 
     @DeleteMapping("/{id}")

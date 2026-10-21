@@ -15,9 +15,9 @@ public final class StudentMapper {
                 student.getFirstName(),
                 student.getLastName(),
                 student.getEmail(),
+                student.getNic(),
                 student.getAge(),
                 student.getPhone(),
-                student.getNic(),
                 student.getCourse() == null ? null : CourseMapper.toResponse(student.getCourse())
 
         );

@@ -22,6 +22,9 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(unique = true) //Unique NIC value
+    private String nic;
+
     @Column(nullable = false)
     private String password;
 
