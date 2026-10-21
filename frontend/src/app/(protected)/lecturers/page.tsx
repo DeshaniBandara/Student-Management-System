@@ -1,100 +1,102 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Course, User } from "@/types";
-import { adminService } from "@/services/adminService";
-import { courseService } from "@/services/courseService";
+import { Inbox, Plus, Eye, EyeOff } from "lucide-react"; // ✅ Eye සහ EyeOff අයිකන import කළා
+import type { LecturerRequest, User } from "@/types";
+import { lecturerService } from "@/services/lecturerService";
 import { getErrorMessage } from "@/lib/api";
-import { btnPrimary, btnSecondary, inputClass, rowBtnDanger } from "@/lib/ui";
+import { btnPrimary, btnSecondary, inputClass, rowBtn, rowBtnDanger } from "@/lib/ui";
 import { useToast } from "@/context/ToastContext";
 import { useConfirm } from "@/context/ConfirmContext";
-import Loading from "@/components/Loading";
+import EmptyState from "@/components/EmptyState";
 import ErrorMessage from "@/components/ErrorMessage";
-import Modal from "@/components/Modal";
 import FormField from "@/components/FormField";
+import Loading from "@/components/Loading";
+import Modal from "@/components/Modal";
+import PageHeader from "@/components/PageHeader";
 
-interface LecturerForm {
-  fullName: string;
-  email: string;
-  password: string;
-}
-
-const emptyForm: LecturerForm = { fullName: "", email: "", password: "" };
+const emptyForm: LecturerRequest = {
+  fullName: "",
+  email: "",
+  nic: "",
+  password: "",
+  confirmPassword: "",
+};
 
 interface FormErrors {
   fullName?: string;
   email?: string;
+  nic?: string;
   password?: string;
-}
-
-async function fetchData(): Promise<{ lecturers: User[]; courses: Course[] }> {
-  const [lecturers, courses] = await Promise.all([
-    adminService.getLecturers(),
-    courseService.getAll(),
-  ]);
-  return { lecturers, courses };
+  confirmPassword?: string;
 }
 
 export default function LecturersPage() {
   const toast = useToast();
-  const { confirm } = useConfirm();          // ✅ hook at top of component
+  const { confirm } = useConfirm();
 
   const [lecturers, setLecturers] = useState<User[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState<LecturerForm>(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<LecturerRequest>(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // ✅ Password එක පෙන්නනවද නැද්ද කියන State එක (දෙකට වෙන වෙනම)
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   useEffect(() => {
-    let ignore = false;
-    fetchData()
-      .then((data) => {
-        if (ignore) return;
-        setLecturers(data.lecturers);
-        setCourses(data.courses);
-      })
-      .catch((err) => {
-        if (!ignore) setError(getErrorMessage(err));
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
-    return () => {
-      ignore = true;
-    };
+    loadData();
   }, []);
 
-  async function reload() {
+  async function loadData() {
     try {
-      const data = await fetchData();
-      setLecturers(data.lecturers);
-      setCourses(data.courses);
+      setLoading(true);
+      const data = await lecturerService.getAll();
+      setLecturers(data);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
     }
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   }
 
   function openCreate() {
-    setForm({ ...emptyForm });
+    setEditingId(null);
+    setForm(emptyForm);
     setErrors({});
     setFormError(null);
+    setShowPassword(false); // Modal එක ඇරෙද්දි ආයෙ reset කරන්න
+    setShowConfirmPassword(false);
     setModalOpen(true);
   }
 
-  function closeModal() {
-    if (!saving) setModalOpen(false);
+  function openEdit(lecturer: User) {
+    setEditingId(lecturer.id);
+    setForm({
+      fullName: lecturer.fullName,
+      email: lecturer.email,
+      nic: lecturer.nic ?? "",
+      password: "",
+      confirmPassword: "",
+    });
+    setErrors({});
+    setFormError(null);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setModalOpen(true);
   }
 
   function validate(): FormErrors {
@@ -107,16 +109,26 @@ export default function LecturersPage() {
       found.email = "Enter a valid email address";
     }
 
-    if (!form.password) {
-      found.password = "Password is required";
-    } else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(form.password)) {
-      found.password =
-        "Use 8 to 72 characters with at least one letter and one number";
+    if (!form.nic.trim()) {
+      found.nic = "NIC is required";
+    } else if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/.test(form.nic.trim())) {
+      found.nic = "Enter a valid NIC (e.g., 123456789V or 200012345678)";
     }
+
+    if (editingId === null && !form.password) {
+      found.password = "Password is required";
+    } else if (form.password && form.password.length < 8) {
+      found.password = "Password must be at least 8 characters";
+    }
+
+    if (form.password !== form.confirmPassword) {
+      found.confirmPassword = "Passwords do not match";
+    }
+
     return found;
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
 
@@ -126,144 +138,107 @@ export default function LecturersPage() {
 
     setSaving(true);
     try {
-      await adminService.createLecturer({
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
-        password: form.password,
-      });
-      toast.success("Lecturer added");
+      if (editingId === null) {
+        await lecturerService.create(form);
+        toast.success("Lecturer added");
+      } else {
+        await lecturerService.update(editingId, form);
+        toast.success("Lecturer updated");
+      }
       setModalOpen(false);
-      await reload();
-    } catch (err) {
-      setFormError(getErrorMessage(err));
+      await loadData();
+    } catch (err: any) {
+      const responseData = err.response?.data || err;
+      if (responseData && responseData.validationErrors) {
+        setErrors(responseData.validationErrors);
+        setFormError("Please fix the highlighted errors.");
+      } else {
+        setFormError(getErrorMessage(err));
+      }
     } finally {
       setSaving(false);
     }
   }
 
-  // ✅ helper: returns the list of courses taught by this lecturer
-  const coursesOf = (lecturerId: number) =>
-    courses.filter((c) => c.lecturer?.id === lecturerId);
-
-  // ✅ helper: returns the count
-  const courseCount = (lecturerId: number) => coursesOf(lecturerId).length;
-
   async function handleDelete(lecturer: User) {
-    const taught = courseCount(lecturer.id);   // ✅ uses the count helper
-    const warning =
-      taught > 0 ? `${taught} course(s) will be left without a lecturer.` : "";
-
     const ok = await confirm({
       title: "Delete lecturer",
-      message: `Delete ${lecturer.fullName}? ${warning} Their login will stop working.`,
+      message: `Delete ${lecturer.fullName}? This cannot be undone.`,
       confirmLabel: "Delete",
       danger: true,
     });
     if (!ok) return;
 
     try {
-      await adminService.deleteLecturer(lecturer.id);
+      await lecturerService.delete(lecturer.id);
       toast.success("Lecturer deleted");
-      await reload();
+      await loadData();
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
   }
 
-  const filtered = lecturers.filter((l) =>
-    `${l.fullName} ${l.email}`.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Lecturers</h1>
-          <p className="text-slate-600">
-            Create lecturer accounts. Assign them to courses on the Courses page.
-          </p>
-        </div>
-        <button onClick={openCreate} className={btnPrimary}>
-          + Add lecturer
-        </button>
-      </div>
+      <PageHeader
+        title="Lecturers"
+        description="Manage lecturer accounts."
+        action={
+          <button onClick={openCreate} className={btnPrimary}>
+            <Plus size={16} /> Add lecturer
+          </button>
+        }
+      />
 
       {loading ? (
         <Loading message="Loading lecturers..." />
       ) : error ? (
-        <ErrorMessage message={error} onRetry={reload} />
+        <ErrorMessage message={error} onRetry={loadData} />
       ) : (
-        <div className="space-y-3">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            aria-label="Search lecturers"
-            className={`md:w-80 ${inputClass}`}
-          />
-
-          {filtered.length === 0 ? (
-            <div className="rounded-lg bg-white p-8 text-center shadow">
-              <p className="text-slate-600">
-                {lecturers.length === 0
-                  ? "No lecturers yet."
-                  : "No lecturers match your search."}
-              </p>
-              {lecturers.length === 0 && (
-                <button onClick={openCreate} className={`mt-4 ${btnPrimary}`}>
-                  Add the first lecturer
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-lg bg-white shadow">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-100 text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Courses</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Full Name</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">NIC</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lecturers.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                    No lecturers found. Add one to get started.
+                  </td>
+                </tr>
+              ) : (
+                lecturers.map((l) => (
+                  <tr key={l.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium">{l.fullName}</td>
+                    <td className="px-4 py-3">{l.email}</td>
+                    <td className="px-4 py-3">{l.nic}</td>
+                    <td className="space-x-2 px-4 py-3 text-right">
+                      <button onClick={() => openEdit(l)} className={rowBtn}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(l)} className={rowBtnDanger}>
+                        Delete
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((l) => {
-                    const count = courseCount(l.id);
-                    return (
-                      <tr
-                        key={l.id}
-                        className="border-t border-slate-100 hover:bg-slate-50"
-                      >
-                        <td className="px-4 py-3 font-medium">{l.fullName}</td>
-                        <td className="px-4 py-3">{l.email}</td>
-                        <td className="px-4 py-3">
-                          {count > 0 ? (
-                            count
-                          ) : (
-                            <span className="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                              None assigned
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleDelete(l)}
-                            className={rowBtnDanger}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <Modal open={modalOpen} title="Add a lecturer" onClose={closeModal}>
+      <Modal
+        open={modalOpen}
+        title={editingId === null ? "Add a lecturer" : "Edit lecturer"}
+        onClose={() => !saving && setModalOpen(false)}
+      >
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <FormField label="Full name" htmlFor="fullName" error={errors.fullName}>
             <input
@@ -271,7 +246,6 @@ export default function LecturersPage() {
               name="fullName"
               value={form.fullName}
               onChange={handleChange}
-              autoFocus
               className={inputClass}
             />
           </FormField>
@@ -287,35 +261,77 @@ export default function LecturersPage() {
             />
           </FormField>
 
-          <FormField
-            label="Temporary password"
-            htmlFor="password"
-            error={errors.password}
-            hint="8 to 72 characters, with at least one letter and one number."
-          >
+          <FormField label="NIC" htmlFor="nic" error={errors.nic}>
             <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={form.password}
+              id="nic"
+              name="nic"
+              value={form.nic}
               onChange={handleChange}
               className={inputClass}
             />
           </FormField>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* ✅ Temporary Password Field එක */}
+            <FormField 
+              label="Temporary Password" 
+              htmlFor="password" 
+              error={errors.password}
+              hint={editingId !== null ? "Leave blank to keep current password." : "Min 8 characters."}
+            >
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"} // State එක අනුව type එක වෙනස් වෙනවා
+                  value={form.password || ""}
+                  onChange={handleChange}
+                  className={`${inputClass} pr-10`} // අයිකනයට ඉඩ තියන්න pr-10 දැම්මා
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </FormField>
+            
+            {/* ✅ Confirm Password Field එක */}
+            <FormField label="Confirm Password" htmlFor="confirmPassword" error={errors.confirmPassword}>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"} // State එක අනුව type එක වෙනස් වෙනවා
+                  value={form.confirmPassword || ""}
+                  onChange={handleChange}
+                  className={`${inputClass} pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </FormField>
+          </div>
+
           {formError && (
-            <p className="rounded bg-red-50 p-3 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
               {formError}
             </p>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={closeModal} className={btnSecondary}>
+            <button type="button" onClick={() => setModalOpen(false)} className={btnSecondary}>
               Cancel
             </button>
             <button type="submit" disabled={saving} className={btnPrimary}>
-              {saving ? "Saving..." : "Add lecturer"}
+              {saving ? "Saving..." : editingId === null ? "Add lecturer" : "Save changes"}
             </button>
           </div>
         </form>

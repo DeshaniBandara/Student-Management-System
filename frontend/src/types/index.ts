@@ -4,7 +4,8 @@ export interface User {
   id: number;
   fullName: string;
   email: string;
-  role: Role;
+  nic: string | null;
+  role: Role; 
 }
 
 export interface AuthResponse {
@@ -46,9 +47,11 @@ export interface Student {
   firstName: string;
   lastName: string;
   email: string;
+  nic: string | null;
   age: number | null;
   phone: string | null;
   course: Course | null;
+  
 }
 
 export interface StudentRequest {
@@ -58,6 +61,7 @@ export interface StudentRequest {
   age?: number;
   phone?: string;
   courseId?: number | null;
+  nic?: string | null;
 }
 
 export interface ApiError {
@@ -68,3 +72,11 @@ export interface ApiError {
   path: string;
   validationErrors?: Record<string, string>;
 }
+export interface LecturerRequest {
+  fullName: string;
+  email: string;
+  nic: string;
+  password?: string;
+  confirmPassword?: string;
+}
+
