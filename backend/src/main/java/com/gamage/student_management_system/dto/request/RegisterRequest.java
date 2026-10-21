@@ -15,6 +15,11 @@ public record RegisterRequest(
         @Email(message = "Email must be valid")
         String email,
 
+        // to add NIC for security
+        @NotBlank(message = "NIC is required")
+        @Pattern(regexp = "^([0-9]{9}[vVxX]|[0-9]{12})$", message = "Invalid NIC format")
+        String nic,
+
         @NotBlank(message = "Password is required")
         @Size(min = 8, max = 72, message = "Password must be 8 to 72 characters")
         @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",

@@ -5,10 +5,13 @@ import com.gamage.student_management_system.dto.request.RegisterRequest;
 import com.gamage.student_management_system.dto.response.AuthResponse;
 import com.gamage.student_management_system.dto.response.UserResponse;
 import com.gamage.student_management_system.entity.Role;
+import com.gamage.student_management_system.entity.Student;
 import com.gamage.student_management_system.entity.User;
+import com.gamage.student_management_system.exception.BadRequestException;
 import com.gamage.student_management_system.exception.ConflictException;
 import com.gamage.student_management_system.exception.ResourceNotFoundException;
 import com.gamage.student_management_system.mapper.UserMapper;
+import com.gamage.student_management_system.repository.StudentRepository;
 import com.gamage.student_management_system.repository.UserRepository;
 import com.gamage.student_management_system.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -24,22 +27,39 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository; //To find the Student
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
+    //New Register Method
     @Transactional
     public UserResponse register(RegisterRequest request) {
         String email = request.email().trim().toLowerCase();
+
+        // 1. To check whether is there any user from this email already
         if (userRepository.existsByEmail(email)) {
             throw new ConflictException("Email is already registered");
         }
 
+        // 2.To check whether Admin already added the student to the system
+        Student student = studentRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new BadRequestException(
+                        "Your email is not registered in the system. Please contact the Administrator to add you as a student."
+                ));
+
+        // 3. check whether NIC is matched or not
+        if (!student.getNic().equalsIgnoreCase(request.nic().trim())) {
+            throw new BadRequestException("The provided NIC does not match our records for this email.");
+        }
+
+        // 4. If everything is okay create new user
         User user = new User();
         user.setFullName(request.fullName().trim());
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setRole(Role.STUDENT); // public registration never creates admins or lecturers
+        user.setRole(Role.STUDENT);
+
         return UserMapper.toResponse(userRepository.save(user));
     }
 
