@@ -17,11 +17,14 @@ import Loading from "@/components/Loading";
 import Modal from "@/components/Modal";
 import PageHeader from "@/components/PageHeader";
 
-const emptyForm = { title: "", description: "", credits: "", lecturerId: "" };
+const emptyForm = { courseCode: "", title: "", description: "", credits: "", lecturerId: "" };
 
 interface FormErrors {
+  courseCode?: string;
   title?: string;
+  description?: string;
   credits?: string;
+  lecturerId?: string; // ✅ අලුතෙන් දැම්මා
 }
 
 async function fetchData() {
@@ -34,7 +37,7 @@ async function fetchData() {
 
 export default function CoursesPage() {
   const toast = useToast();
-  const { confirm } = useConfirm();          // ✅ destructured at the top
+  const { confirm } = useConfirm();
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [lecturers, setLecturers] = useState<User[]>([]);
@@ -82,6 +85,7 @@ export default function CoursesPage() {
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   }
 
   function openCreate() {
@@ -95,6 +99,7 @@ export default function CoursesPage() {
   function openEdit(course: Course) {
     setEditingId(course.id);
     setForm({
+      courseCode: course.courseCode,
       title: course.title,
       description: course.description ?? "",
       credits: String(course.credits),
@@ -111,13 +116,29 @@ export default function CoursesPage() {
 
   function validate(): FormErrors {
     const found: FormErrors = {};
+
+    if (!form.courseCode.trim()) {
+      found.courseCode = "Course code is required";
+    } else if (!/^[A-Z0-9]{3,10}$/.test(form.courseCode.trim())) {
+      found.courseCode = "Use 3-10 uppercase letters/numbers (e.g., ICT101)";
+    }
+
     if (!form.title.trim()) found.title = "Title is required";
-    const credits = Number(form.credits);
+
     if (!form.credits) {
       found.credits = "Credits are required";
-    } else if (!Number.isInteger(credits) || credits < 1) {
-      found.credits = "Credits must be a whole number of 1 or more";
+    } else {
+      const credits = Number(form.credits);
+      if (!Number.isInteger(credits) || credits < 1 || credits > 140) {
+        found.credits = "Credits must be between 1 and 140";
+      }
     }
+
+    // ✅ මෙන්න මේ කෑල්ල තමයි ඔයාගේ කෝඩ් එකේ අඩු වෙලා තිබ්බේ
+    if (!form.lecturerId) {
+      found.lecturerId = "Please select a lecturer";
+    }
+
     return found;
   }
 
@@ -130,6 +151,7 @@ export default function CoursesPage() {
     if (Object.keys(found).length > 0) return;
 
     const payload: CourseRequest = {
+      courseCode: form.courseCode.trim().toUpperCase(),
       title: form.title.trim(),
       description: form.description.trim() || undefined,
       credits: Number(form.credits),
@@ -147,15 +169,29 @@ export default function CoursesPage() {
       }
       setModalOpen(false);
       await reload();
-    } catch (err) {
-      setFormError(getErrorMessage(err));
+    } catch (err: any) {
+      const responseData = err.response?.data || err;
+
+      if (responseData && responseData.validationErrors) {
+        setErrors(responseData.validationErrors);
+        setFormError("Please fix the highlighted errors.");
+        return;
+      }
+
+      const errorMessage = responseData?.message || responseData?.error || "Something went wrong";
+      
+      if (errorMessage.toLowerCase().includes("course code")) {
+        setErrors((prev) => ({ ...prev, courseCode: errorMessage }));
+        setFormError("Please fix the highlighted errors.");
+      } else {
+        setFormError(errorMessage);
+      }
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(course: Course) {
-    // ✅ use the confirm from the top of the component — no hook call here
     const warning =
       course.studentCount > 0
         ? ` ${course.studentCount} enrolled student(s) will be left without a course.`
@@ -179,7 +215,7 @@ export default function CoursesPage() {
   }
 
   const filtered = courses.filter((c) =>
-    `${c.title} ${c.lecturer?.fullName ?? ""}`.toLowerCase().includes(search.toLowerCase())
+    `${c.courseCode} ${c.title} ${c.lecturer?.fullName ?? ""}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -203,7 +239,7 @@ export default function CoursesPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or lecturer..."
+            placeholder="Search by code, title or lecturer..."
             aria-label="Search courses"
             className={`md:w-80 ${inputClass}`}
           />
@@ -224,7 +260,7 @@ export default function CoursesPage() {
               <EmptyState
                 icon={Inbox}
                 title="No courses match your search"
-                description="Try a different title or lecturer name."
+                description="Try a different code, title or lecturer name."
               />
             )
           ) : (
@@ -232,6 +268,7 @@ export default function CoursesPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
+                    <th className="px-4 py-3">Code</th>
                     <th className="px-4 py-3">Course</th>
                     <th className="px-4 py-3">Lecturer</th>
                     <th className="px-4 py-3">Credits</th>
@@ -242,6 +279,7 @@ export default function CoursesPage() {
                 <tbody>
                   {filtered.map((c) => (
                     <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-3 font-semibold text-slate-700">{c.courseCode}</td>
                       <td className="px-4 py-3">
                         <p className="font-medium">{c.title}</p>
                         <p className="max-w-xs truncate text-slate-500">{c.description ?? ""}</p>
@@ -278,30 +316,47 @@ export default function CoursesPage() {
         onClose={closeModal}
       >
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Course Code" htmlFor="courseCode" error={errors.courseCode} hint="e.g. ICT101">
+              <input
+                id="courseCode"
+                name="courseCode"
+                value={form.courseCode}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase();
+                  setForm((prev) => ({ ...prev, courseCode: val }));
+                  setErrors((prev) => ({ ...prev, courseCode: undefined }));
+                }}
+                className={inputClass}
+              />
+            </FormField>
+
+            <FormField label="Credits" htmlFor="credits" error={errors.credits} hint="1 to 140">
+              <input
+                id="credits"
+                name="credits"
+                type="number"
+                min="1"
+                max="140"
+                value={form.credits}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </FormField>
+          </div>
+
           <FormField label="Title" htmlFor="title" error={errors.title}>
             <input
               id="title"
               name="title"
               value={form.title}
               onChange={handleChange}
-              autoFocus
               className={inputClass}
             />
           </FormField>
 
-          <FormField label="Credits" htmlFor="credits" error={errors.credits}>
-            <input
-              id="credits"
-              name="credits"
-              type="number"
-              min="1"
-              value={form.credits}
-              onChange={handleChange}
-              className={inputClass}
-            />
-          </FormField>
-
-          <FormField label="Description" htmlFor="description" hint="Optional">
+          <FormField label="Description" htmlFor="description" error={errors.description} hint="Optional">
             <input
               id="description"
               name="description"
@@ -311,10 +366,12 @@ export default function CoursesPage() {
             />
           </FormField>
 
+          {/* ✅ මෙතන "Optional" කියන එක අයින් කරලා "Select a lecturer" කළා */}
           <FormField
             label="Lecturer"
             htmlFor="lecturerId"
-            hint="Optional. You can assign one later."
+            error={errors.lecturerId}
+            hint="Select a lecturer for this course."
           >
             <select
               id="lecturerId"
@@ -323,7 +380,7 @@ export default function CoursesPage() {
               onChange={handleChange}
               className={inputClass}
             >
-              <option value="">No lecturer assigned</option>
+              <option value="">Select a lecturer</option>
               {lecturers.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.fullName}
