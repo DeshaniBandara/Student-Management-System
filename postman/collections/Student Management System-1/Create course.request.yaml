@@ -5,11 +5,17 @@ body:
   type: json
   content: "   {\r
 
-    \     \"title\": \"BSc in ICT\",\r
+    \    \"fullname\": \"Selani Vihanga\",\r
 
-    \     \"description\": \"Information and Communication Technology\",\r
+    \    \"email\": \"selani@gmail.com\",\r
 
-    \     \"credits\": 120\r
+    \    \"nic\": \"200178500123\",\r
+
+    \    \"password\": \"SeLa1234\",\r
+
+    \    \"confirmPassword\": \"SeLa1234\"\r
+
+    \     \r
 
     \   }"
 order: 1000
