@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { GraduationCap, LogOut, Menu } from "lucide-react";
+import { GraduationCap, LogOut, Menu, UserCircle } from "lucide-react"; // ✅ UserCircle එකතු කළා
 import { useAuth } from "@/context/AuthContext";
 import { linksByRole, roleBadgeClass, roleLabel } from "@/lib/roles";
 import Avatar from "@/components/Avatar";
@@ -54,6 +54,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+
+        {/* ✅ මෙන්න මේක තමයි අලුතෙන් එකතු කරපු My Profile ලින්ක් එක */}
+        {user && (
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            aria-current={pathname === "/profile" ? "page" : undefined}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+              pathname === "/profile"
+                ? "bg-brand-600 text-white"
+                : "text-slate-300 hover:bg-slate-800 hover:text-white"
+            }`}
+          >
+            <UserCircle size={18} />
+            My Profile
+          </Link>
+        )}
       </nav>
 
       {user && (

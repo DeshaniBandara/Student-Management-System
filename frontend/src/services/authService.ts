@@ -16,4 +16,8 @@ export const authService = {
     const response = await api.get<User>("/api/auth/me");
     return response.data;
   },
+  // authService.ts එකේ අනිත් ඒවා යටතේ
+  changePassword: async (data: any): Promise<void> => {
+    await api.put("/api/auth/change-password", data);
+  },
 };
