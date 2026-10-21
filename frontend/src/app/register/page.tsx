@@ -12,6 +12,7 @@ import FormField from "@/components/FormField";
 interface FormErrors {
   fullName?: string;
   email?: string;
+  nic?: string; // ✅ අලුතෙන් එකතු කළා
   password?: string;
   confirm?: string;
 }
@@ -21,6 +22,7 @@ export default function RegisterPage() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [nic, setNic] = useState(""); // ✅ අලුත් State එක
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +39,13 @@ export default function RegisterPage() {
       found.email = "Email is required";
     } else if (!/^\S+@\S+\.\S+$/.test(email)) {
       found.email = "Enter a valid email address";
+    }
+
+    // ✅ NIC Validation එක (9 අකුරු + V/X හෝ ඉලක්කම් 12)
+    if (!nic.trim()) {
+      found.nic = "NIC is required";
+    } else if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/.test(nic.trim())) {
+      found.nic = "Enter a valid NIC (e.g., 123456789V or 200012345678)";
     }
 
     if (!password) {
@@ -59,7 +68,13 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      await register({ fullName: fullName.trim(), email: email.trim(), password });
+      // ✅ register function එකට NIC එකත් යවනවා
+      await register({ 
+        fullName: fullName.trim(), 
+        email: email.trim(), 
+        nic: nic.trim(), // <--- මේක අලුතෙන් එකතු කළා
+        password 
+      });
       setDone(true);
     } catch (err) {
       setServerError(getErrorMessage(err));
@@ -71,7 +86,7 @@ export default function RegisterPage() {
   if (done) {
     return (
       <AuthShell title="Account created" subtitle="You can now sign in with your email and password.">
-        <Link href="/login" className={`w-full ${btnPrimary}`}>
+        <Link href="/login" className={`w-full text-center ${btnPrimary}`}>
           Go to sign in
         </Link>
       </AuthShell>
@@ -81,7 +96,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Use the email address your administrator registered for you."
+      subtitle="Use the email and NIC your administrator registered for you."
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <FormField label="Full name" htmlFor="fullName" error={errors.fullName}>
@@ -101,6 +116,21 @@ export default function RegisterPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className={inputClass}
+          />
+        </FormField>
+
+        {/* ✅ අලුත් NIC Input Field එක */}
+        <FormField 
+          label="NIC" 
+          htmlFor="nic" 
+          error={errors.nic} 
+          hint="Enter the NIC registered by the administrator."
+        >
+          <input
+            id="nic"
+            value={nic}
+            onChange={(e) => setNic(e.target.value)}
             className={inputClass}
           />
         </FormField>

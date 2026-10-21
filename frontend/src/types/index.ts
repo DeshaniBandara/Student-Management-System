@@ -23,6 +23,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   fullName: string;
   email: string;
+  nic: string;
   password: string;
 }
 
