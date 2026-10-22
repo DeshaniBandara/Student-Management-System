@@ -1,0 +1,47 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"fullName\":\"Nimesha Wickramarachchi\",\r
+
+    \    \"email\":\"nimesha@gmail.com\",\r
+
+    \    \"nic\":\"200356123567\",\r
+
+    \    \"password\":\"NimWic45\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "// 1. Status Code එක 201 Created ද බලනවා\r
+
+      pm.test(\"Status code is 201 Created\", function () {\r
+
+      \    pm.response.to.have.status(201);\r
+
+      });\r
+
+      \r
+
+      // 2. ආපු Response එකේ Role එක STUDENT ද කියලා බලනවා\r
+
+      pm.test(\"User role should be STUDENT\", function () {\r
+
+      \    const jsonData = pm.response.json();\r
+
+      \    pm.expect(jsonData.role).to.eql(\"STUDENT\");\r
+
+      });\r
+
+      \r
+
+      // 3. අලුතින් හැදුණු User ගේ ID එක Save කරගන්න පුළුවන් (ඕන නම් විතරයි)\r
+
+      const jsonData = pm.response.json();\r
+
+      pm.environment.set(\"newUserId\", jsonData.id);"
+    language: text/javascript
+order: 4000

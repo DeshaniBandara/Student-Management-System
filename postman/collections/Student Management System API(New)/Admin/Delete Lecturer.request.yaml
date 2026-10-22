@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/lecturers/3"
+method: DELETE
+scripts:
+  - type: afterResponse
+    code: pm.test("status code is 204, No content",function(){pm.response.to.have.status(204);});
+    language: text/javascript
+order: 11000

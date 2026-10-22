@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{baseUrl}}/api/students/1/course/2"
+method: PUT
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is200 OK",function(){pm.response.to.have.status(200);});
+    language: text/javascript
+order: 14000

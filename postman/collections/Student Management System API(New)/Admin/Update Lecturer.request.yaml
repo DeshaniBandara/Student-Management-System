@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/lecturers/10"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \    \"fullName\":\"Deshani Bnadara\",\r
+
+    \    \"email\":\"deshanibandara2001@gmail.com\",\r
+
+    \    \"nic\": 200350067123\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is200 OK",function(){pm.response.to.have.status(200);});
+    language: text/javascript
+order: 16000

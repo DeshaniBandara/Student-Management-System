@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/api/students/18"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \    \"firstName\":\"Nimesha\",\r
+
+    \    \"lastName\":\" Wickramarachchi\",\r
+
+    \    \"email\":\"nimesha@gmail.com\",\r
+
+    \    \"nic\":\"200356123567\",\r
+
+    \    \"age\":24,\r
+
+    \    \"phone\":\"0771234987\",\r
+
+    \    \"courseId\":2\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is200 OK",function(){pm.response.to.have.status(200);});
+    language: text/javascript
+order: 18000

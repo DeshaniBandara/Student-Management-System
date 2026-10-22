@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/students"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"firstName\":\"Nimesha\",\r
+
+    \    \"lastName\":\" Wickramarachchi\",\r
+
+    \    \"email\":\"nimesha@gmail.com\",\r
+
+    \    \"nic\":\"200356123567\",\r
+
+    \    \"age\":26,\r
+
+    \    \"phone\":\"0771234987\",\r
+
+    \    \"courseId\":2\r
+
+    }"
+order: 1000

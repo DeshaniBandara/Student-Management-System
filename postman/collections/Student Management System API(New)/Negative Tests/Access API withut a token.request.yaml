@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"email\": \"admin@uov.com\",\r
+
+    \    \"password\": \"AdU123$%\"\r
+
+    }"
+auth:
+  type: bearer
+order: 4000

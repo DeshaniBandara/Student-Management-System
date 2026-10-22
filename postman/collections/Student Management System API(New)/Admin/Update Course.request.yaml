@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/courses/12"
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \    \"courseCode\":\"ENG001\",\r
+
+    \    \"title\":\"English Grammar\",\r
+
+    \    \"description\":\"Nouns,Tenses etc\",\r
+
+    \    \"credits\":60,\r
+
+    \    \"lecturerId\":20\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is200 OK",function(){pm.response.to.have.status(200);});
+    language: text/javascript
+order: 17000

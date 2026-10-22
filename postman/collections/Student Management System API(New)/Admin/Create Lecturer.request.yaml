@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/lecturers"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"fullName\":\"Saman Kumara\",\r
+
+    \    \"email\":\"samankumara@gmail.com\",\r
+
+    \    \"nic\":\"200020300789\",\r
+
+    \    \"password\":\"samanK123\",\r
+
+    \    \"confirmPassword\":\"samanK123\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Status code is 201 Created\", function () { pm.response.to.have.status(201); });\r
+
+      var jsonData = pm.response.json();\r\n"
+    language: text/javascript
+order: 2000

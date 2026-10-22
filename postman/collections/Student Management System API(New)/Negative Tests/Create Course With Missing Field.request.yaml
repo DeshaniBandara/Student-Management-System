@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/courses"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"courseCode\":\"ENG001\",\r
+
+    \    \"title\":\"English Grammar\",\r
+
+    \    \"lecturerId\":20\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Status code is 201 Created\", function () { pm.response.to.have.status(201); });\r
+
+      var jsonData = pm.response.json();\r\n"
+    language: text/javascript
+order: 1000

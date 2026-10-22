@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/lecturers"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"email\": \"admin@uov.com\",\r
+
+    \    \"password\": \"AdU123$%\"\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: "{{studentToken}}"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Status code is 200 OK\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      const jsonData = pm.response.json();\r
+
+      pm.environment.set(\"adminToken\", jsonData.token); // ✅ Admin ට අදාළව Save වෙනවා\r
+
+      pm.environment.set(\"token\", jsonData.token);"
+    language: text/javascript
+order: 3000
