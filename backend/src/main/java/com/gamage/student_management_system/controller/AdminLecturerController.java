@@ -28,7 +28,7 @@ public class AdminLecturerController {
         return lecturerService.create(request);
     }
 
-    // ✅ අලුතින් එකතු කරපු Edit (Update) API එක
+    //  Edit (Update) API
     @PutMapping("/{id}")
     public UserResponse update(@PathVariable Long id, @Valid @RequestBody LecturerRequest request) {
         return lecturerService.update(id, request);
